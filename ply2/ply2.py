@@ -574,7 +574,7 @@ def write(f, data):
 
 
 # Regular expression for doing a 'split' without throwing away white space. Relies on the fact the Python re module is greedy, and tries to make each match as long as possible...
-  ws_keep_split = re.compile(br'(\s*[^\s]*)')
+ws_keep_split = re.compile(br'(\s*[^\s]*)')
 
 
 
