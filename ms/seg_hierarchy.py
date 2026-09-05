@@ -14,16 +14,16 @@ import os.path
 import cv
 import numpy
 
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
 # Check an image filename has been provided on the command line...
 if len(sys.argv)<2:
-  print "Needs an image filename. An arbitrary second parameter causes it to store its results in a hsf5 file rather than dump them as images."
+  print("Needs an image filename. An arbitrary second parameter causes it to store its results in a hsf5 file rather than dump them as images.")
   sys.exit(1)
 
 fn = sys.argv[1]
@@ -63,8 +63,8 @@ del pb
 
 if len(sys.argv)==2:
   for l, level in enumerate(hier):
-    print '%i clusters at level %i' % (level[0].shape[0], l)
-  print
+    print('%i clusters at level %i' % (level[0].shape[0], l))
+  print()
 
 
 
@@ -74,7 +74,7 @@ def int_to_col(val):
   val += 1 # Skip black
   
   amount = 1
-  for bit in xrange(32):
+  for bit in range(32):
     if bit & val:
       ret[bit%3] += amount
 
@@ -82,11 +82,11 @@ def int_to_col(val):
       amount *= 2
   
   seq = [0.0, 1.0, 0.5, 0.25, 0.75, 0.125, 0.375, 0.625, 0.875, 0.0625, 0.1875, 0.3125, 0.4375, 0.5625, 0.6875, 0.8125, 0.9375]
-  ret = map(lambda i: seq[i%len(seq)], ret)
+  ret = [seq[i%len(seq)] for i in ret]
   return tuple(ret)
 
 colours = numpy.empty((hier[0][0].shape[0],3), dtype=numpy.float32)
-for i in xrange(colours.shape[0]):
+for i in range(colours.shape[0]):
   colours[i,:] = int_to_col(i)
 colours *= 255.0
 
@@ -140,4 +140,4 @@ else:
   f.close()
 
 
-print 'Done.'
+print('Done.')

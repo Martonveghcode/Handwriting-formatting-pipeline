@@ -47,7 +47,7 @@ def scale(amount):
 def match(source, dest):
   """Calculates a 2D homography that converts from the source coordinates to the dest coordinates. both are (4,2) data matrices of 4 x,y coordinates. Returns a 3x3 matrix that when multiplied by the homogenous versions of source gets you to dest."""
   bm = numpy.zeros((8,9), dtype=numpy.float32)
-  for i in xrange(4):
+  for i in range(4):
     bm[i*2,3] = -source[i,0]
     bm[i*2,4] = -source[i,1]
     bm[i*2,5] = -1.0
@@ -118,7 +118,7 @@ def scaling(hg, lower, upper, divisions = 100):
   
   x_neighbour = []
   y_neighbour = []
-  for ci in xrange(4):
+  for ci in range(4):
     x_neighbour.append(near*corner[ci] + far*corner[ci^2])
     y_neighbour.append(near*corner[ci] + far*corner[ci^1])
   
@@ -131,7 +131,7 @@ def scaling(hg, lower, upper, divisions = 100):
   
   # Loop and calculate all of the scales...
   scales = []
-  for ci in xrange(4):
+  for ci in range(4):
     ct = hg.dot(corner[ci])
     
     start = dist(corner[ci], x_neighbour[ci])

@@ -8,9 +8,15 @@
 
 #include <Python.h>
 #include <structmember.h>
+#include <limits.h>
+#include <stdint.h>
 
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
+
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_Check PyLong_Check
+#endif
 
 
 
@@ -256,7 +262,7 @@ static PyObject * GBP_new_py(PyTypeObject * type, PyObject * args, PyObject * kw
 static void GBP_dealloc_py(GBP * self)
 {
  GBP_dealloc(self);
- self->ob_type->tp_free((PyObject*)self);
+ Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 
@@ -387,7 +393,7 @@ int GBP_index(GBP * this, PyObject * arg, Py_ssize_t * start, Py_ssize_t * step,
  {
   Py_ssize_t stop;
     
-  if (PySlice_GetIndicesEx((PySliceObject*)arg, this->node_count, start, &stop, step, length)!=0)
+  if (PySlice_GetIndicesEx(arg, this->node_count, start, &stop, step, length)!=0)
   {
    PyErr_SetString(PyExc_IndexError, "Slice doesn't play with the length.");
    return -1;
@@ -464,12 +470,20 @@ static PyObject * GBP_add_py(GBP * self, PyObject * args)
   if (!PyArg_ParseTuple(args, "|i", &count)) return NULL;
   
  // Realloc the storage, and initialise the new nodes...
+  if ((count<0)||(count>INT_MAX-self->node_count))
+  {
+   PyErr_SetString(PyExc_ValueError, "Invalid number of nodes to add.");
+   return NULL;
+  }
+
   int index_first = self->node_count;
-  void * old_ptr = self->node;
-  
-  self->node_count += count;
-  void * new_ptr = realloc(old_ptr, self->node_count * sizeof(Node));
-  self->node = (Node*)new_ptr;
+  int new_count = self->node_count + count;
+  uintptr_t old_base = (uintptr_t)self->node;
+  Node * new_ptr = (Node*)realloc(self->node, (size_t)new_count * sizeof(Node));
+  if ((new_ptr==NULL)&&(new_count!=0)) return PyErr_NoMemory();
+
+  self->node = new_ptr;
+  self->node_count = new_count;
   
   int i;
   for (i=index_first; i<self->node_count; i++)
@@ -483,14 +497,16 @@ static PyObject * GBP_add_py(GBP * self, PyObject * args)
    self->node[i].on = 1;
   }
   
- // Loop through and correct all the pointers to nodes in the edges...
-  size_t offset = new_ptr - old_ptr;
+ // Loop through and correct all the pointers to nodes in the edges. Convert
+ // dangling pointer values to integer offsets first: subtracting pointers
+ // after realloc has freed/moved the original allocation is undefined.
   for (i=0; i<index_first; i++)
   {
    HalfEdge * msg = self->node[i].first;
    while (msg!=NULL)
    {
-    msg->dest = (Node*)((void*)msg->dest + offset);
+    size_t dest_index = ((uintptr_t)msg->dest - old_base) / sizeof(Node);
+    msg->dest = self->node + dest_index;
     msg = msg->next; 
    }
   }
@@ -2204,45 +2220,15 @@ static PyMethodDef GBP_methods[] =
 
 static PyTypeObject GBPType =
 {
- PyObject_HEAD_INIT(NULL)
- 0,                                /*ob_size*/
- "gbp_c.GBP",                      /*tp_name*/
- sizeof(GBP),                      /*tp_basicsize*/
- 0,                                /*tp_itemsize*/
- (destructor)GBP_dealloc_py,       /*tp_dealloc*/
- 0,                                /*tp_print*/
- 0,                                /*tp_getattr*/
- 0,                                /*tp_setattr*/
- 0,                                /*tp_compare*/
- 0,                                /*tp_repr*/
- 0,                                /*tp_as_number*/
- 0,                                /*tp_as_sequence*/
- 0,                                /*tp_as_mapping*/
- 0,                                /*tp_hash */
- 0,                                /*tp_call*/
- 0,                                /*tp_str*/
- 0,                                /*tp_getattro*/
- 0,                                /*tp_setattro*/
- 0,                                /*tp_as_buffer*/
- Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
- "A fairly straight forward implimentation of Gaussian belief propagation, with univariate random variables for each node, with unary and pairwise terms, where pairwise terms are specified in terms of offsets with noise or precisions. Works with precision (inverse variance) throughout, so it can represent 'no information' with a value of zero (a variance of zero is supported by setting precision really high, as in infinity or higher than 1e32.). Note that for a Gaussian random field the MAP and the marginal are the same, so this is calculating both. It also has a TRW-S solver. Constructed with the number of random variables (more can be added, but thats inefficient); number of edges (factors) can change at will, and the constructor takes an optional second parameter for the block size, as in the number of new edges to allocate each time it runs out of memory.", /* tp_doc */
- 0,                                /* tp_traverse */
- 0,                                /* tp_clear */
- 0,                                /* tp_richcompare */
- 0,                                /* tp_weaklistoffset */
- 0,                                /* tp_iter */
- 0,                                /* tp_iternext */
- GBP_methods,                      /* tp_methods */
- GBP_members,                      /* tp_members */
- 0,                                /* tp_getset */
- 0,                                /* tp_base */
- 0,                                /* tp_dict */
- 0,                                /* tp_descr_get */
- 0,                                /* tp_descr_set */
- 0,                                /* tp_dictoffset */
- 0,                                /* tp_init */
- 0,                                /* tp_alloc */
- GBP_new_py,                       /* tp_new */
+ PyVarObject_HEAD_INIT(NULL, 0)
+ .tp_name = "gbp_c.GBP",
+ .tp_basicsize = sizeof(GBP),
+ .tp_dealloc = (destructor)GBP_dealloc_py,
+ .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+ .tp_doc = "Gaussian belief propagation with univariate random variables.",
+ .tp_methods = GBP_methods,
+ .tp_members = GBP_members,
+ .tp_new = GBP_new_py,
 };
 
 
@@ -2254,18 +2240,31 @@ static PyMethodDef gbp_c_methods[] =
 
 
 
-#ifndef PyMODINIT_FUNC
-#define PyMODINIT_FUNC void
-#endif
-
-PyMODINIT_FUNC initgbp_c(void)
+static struct PyModuleDef gbp_c_module =
 {
- PyObject * mod = Py_InitModule3("gbp_c", gbp_c_methods, "Provides a simple Gaussian belief propagation implimentation - basically a nice way of specifying certain kinds of linear problems.");
+ PyModuleDef_HEAD_INIT,
+ "gbp_c",
+ "Provides a simple Gaussian belief propagation implementation.",
+ -1,
+ gbp_c_methods
+};
+
+PyMODINIT_FUNC PyInit_gbp_c(void)
+{
+ PyObject * mod;
  
  import_array();
- 
- if (PyType_Ready(&GBPType) < 0) return;
+ if (PyType_Ready(&GBPType) < 0) return NULL;
+ mod = PyModule_Create(&gbp_c_module);
+ if (mod==NULL) return NULL;
  
  Py_INCREF(&GBPType);
- PyModule_AddObject(mod, "GBP", (PyObject*)&GBPType);
+ if (PyModule_AddObject(mod, "GBP", (PyObject*)&GBPType) < 0)
+ {
+  Py_DECREF(&GBPType);
+  Py_DECREF(mod);
+  return NULL;
+ }
+
+ return mod;
 }

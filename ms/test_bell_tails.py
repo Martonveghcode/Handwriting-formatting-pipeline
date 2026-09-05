@@ -12,9 +12,9 @@ import numpy
 import numpy.random
 from scipy.misc import imsave
 
-from utils.prog_bar import ProgBar
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -25,7 +25,7 @@ from ms import MeanShift
 great_bells = [('gaussian', 4.0), ('cauchy', 6.0), ('logistic', 8.0)]
 
 for bell, gap in great_bells:
-  print '%s:' % bell
+  print('%s:' % bell)
   
   # Setup two single sample models...
   a = MeanShift()

@@ -13,7 +13,7 @@ import sys
 import numpy
 from scipy.misc import imread, imsave
 
-from transform import *
+from .transform import *
 
 
 
@@ -65,8 +65,8 @@ out = numpy.zeros((cy.shape[0] * sample_grid, cx.shape[0] * sample_grid, 3), dty
 for i, name in enumerate(['r', 'g', 'b']):
   data = feats[name]
   
-  for y in xrange(cy.shape[0]):
-    for x in xrange(cx.shape[0]):
+  for y in range(cy.shape[0]):
+    for x in range(cx.shape[0]):
       block = data[y * cx.shape[0] + x,:].reshape((sample_grid, sample_grid))
       out[y*sample_grid:(y+1)*sample_grid, x*sample_grid:(x+1)*sample_grid, i] = block.astype(numpy.uint8)
 

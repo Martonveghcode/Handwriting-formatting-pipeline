@@ -86,16 +86,16 @@ float Info_entropy(Info this);
 // Basic information types...
 
 // Big fat NO-OP - always returns 0, mainly for use with BiGaussian on the second channel...
-const InfoType NothingInfo; // N
+extern const InfoType NothingInfo; // N
 
 // Entropy of a Categorical distribution over the data...
-const InfoType CategoricalInfo; // C
+extern const InfoType CategoricalInfo; // C
 
 // Entropy of a Gaussian distribution over the data...
-const InfoType GaussianInfo; // G
+extern const InfoType GaussianInfo; // G
 
 // Entropy of a bivariate Gaussian distribution over the data...
-const InfoType BiGaussianInfo; // B
+extern const InfoType BiGaussianInfo; // B
 
 
 

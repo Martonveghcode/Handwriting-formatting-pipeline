@@ -385,7 +385,7 @@ const LearnerType * ListLearner[] =
 LearnerSet * LearnerSet_new(DataMatrix * dm, const char * codes)
 {
  // Verify that the codes array is the right length...
-  if ((codes!=NULL)&&(strlen(codes)!=dm->features))
+  if ((codes!=NULL)&&(strlen(codes)!=(size_t)dm->features))
   {
    PyErr_SetString(PyExc_ValueError, "Learner codes do not match datamatrix feature count");
    return NULL; 
@@ -625,5 +625,5 @@ void Setup_Learner(void)
  CodeToString['C'] = StringContinuousSplit;
  CodeToString['D'] = StringDiscreteSelect;
  
- import_array();
+ if (_import_array()<0) return;
 }

@@ -12,10 +12,10 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 # Does bandwidth estimation with a Fisher distribution, using points on a sphere.
 
@@ -78,7 +78,7 @@ def ms_by_conc(power, code=''):
   
   return ms
 
-options = map(ms_by_conc, xrange(8)) + [ms_by_conc(8,'c'), ms_by_conc(8,'a')] + map(ms_by_conc, xrange(9,16))
+options = list(map(ms_by_conc, range(8))) + [ms_by_conc(8,'c'), ms_by_conc(8,'a')] + list(map(ms_by_conc, range(9,16)))
 
 
 
@@ -90,8 +90,8 @@ p = ProgBar()
 best = ms.scale_loo_nll_array(options, p.callback)
 del p
 
-print 'Selected kernel =', ms.get_kernel()
-print 'LOO score =', best
+print('Selected kernel =', ms.get_kernel())
+print('LOO score =', best)
 
 
 

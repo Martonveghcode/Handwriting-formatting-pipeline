@@ -13,7 +13,7 @@ try:
 except ImportError:
   import weave
 
-from utils.start_cpp import start_cpp
+from .utils.start_cpp import start_cpp
 
 
 
@@ -254,14 +254,14 @@ def apply_tps_all(image, tps):
   # Compress the data matrix down, to remove duplicates...
   index = numpy.lexsort(dm.T)
   dm = dm[index,:]
-  keep = numpy.ones(dm.shape[0], dtype=numpy.bool)
+  keep = numpy.ones(dm.shape[0], dtype=bool)
   keep[1:] = (numpy.diff(dm, axis=0)!=0).any(axis=1)
   dm = dm[keep]
 
   # Run for all unique colours...
   out = numpy.empty(dm.shape[0], dtype=numpy.float32)
   step = 1024 * 1024
-  for i in xrange(0,out.shape[0],step):
+  for i in range(0,out.shape[0],step):
     out[i:i+step] = tps(dm[i:i+step,:].astype(numpy.float32))
   
   # Blow the data matrix up to its original size...

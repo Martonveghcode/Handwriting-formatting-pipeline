@@ -12,8 +12,8 @@
 
 
 
-from start_cpp import start_cpp
-from numpy_help_cpp import numpy_util_code
+from .start_cpp import start_cpp
+from .numpy_help_cpp import numpy_util_code
 
 
 

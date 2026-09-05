@@ -10,7 +10,7 @@
 
 
 
-import frf
+from . import frf
 
 import numpy
 
@@ -90,7 +90,7 @@ total_count = zombie_count + human_count
 dm = numpy.empty((total_count, len(attributes)), dtype=numpy.int32)
 cat = numpy.empty(total_count, dtype=numpy.int32)
 
-for i in xrange(total_count):
+for i in range(total_count):
   if i<zombie_count:
     dm[i,:] = make_zombie()
     cat[i] = 0
@@ -107,38 +107,38 @@ forest.min_exemplars = 4
 
 oob = forest.train(dm, cat, 4)
 
-print 'Made forest (oob = %.2f%%):' % ((1.0 - oob[0]) * 100.0)
-for i in xrange(min(len(forest),4)):
-  print '  Tree %i: %i bytes, %i nodes' % (i, forest[i].size, forest[i].nodes())
-print
+print('Made forest (oob = %.2f%%):' % ((1.0 - oob[0]) * 100.0))
+for i in range(min(len(forest),4)):
+  print('  Tree %i: %i bytes, %i nodes' % (i, forest[i].size, forest[i].nodes()))
+print()
 
 
 # Test...
 zombie_test = 256
 zombie_success = 0
-for i in xrange(zombie_test):
+for i in range(zombie_test):
   z = make_zombie()
   dist = forest.predict(z[numpy.newaxis,:], 0)[0]
   if dist['prob'][0]>dist['prob'][1]:
     zombie_success += 1
 
-print 'Of %i zombies %i (%.1f%%) were correctly detected.'%(zombie_test, zombie_success, 100.0*zombie_success/float(zombie_test))
+print('Of %i zombies %i (%.1f%%) were correctly detected.'%(zombie_test, zombie_success, 100.0*zombie_success/float(zombie_test)))
   
 human_test = 256
 human_success = 0
-for i in xrange(human_test):
+for i in range(human_test):
   h = make_human()
   dist = forest.predict(h[numpy.newaxis,:], 0)[0]
   if dist['prob'][1]>dist['prob'][0]:
     human_success += 1
 
-print 'Of %i humans %i (%.1f%%) were correctly detected.'%(human_test, human_success, 100.0*human_success/float(human_test))
-print
+print('Of %i humans %i (%.1f%%) were correctly detected.'%(human_test, human_success, 100.0*human_success/float(human_test)))
+print()
 
 
 # Vomit out feature importance...
-print 'Feature importance:'
+print('Feature importance:')
 for t, tree in enumerate(forest):
-  print 'Tree  %i:'%t, '[', ' '.join(['%6.3f'%f for f in tree.importance()]), ']  (trained with %i exemplars)'%tree.trained()
+  print('Tree  %i:'%t, '[', ' '.join(['%6.3f'%f for f in tree.importance()]), ']  (trained with %i exemplars)'%tree.trained())
 
-print 'Overall:', '[', ' '.join(['%6.3f'%f for f in forest.importance()]), ']'
+print('Overall:', '[', ' '.join(['%6.3f'%f for f in forest.importance()]), ']')

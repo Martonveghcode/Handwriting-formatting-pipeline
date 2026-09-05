@@ -10,7 +10,7 @@
 
 
 
-import frf
+from . import frf
 
 import os
 import numpy
@@ -78,8 +78,8 @@ class Brains:
 
   
 attributes = (Eyesight, MindSet, Body, Brains)
-int_length = len(filter(lambda a: a.cont==False, attributes))
-real_length = sum(map(lambda a: a.length if a.cont else 0, attributes))
+int_length = len([a for a in attributes if a.cont==False])
+real_length = sum([a.length if a.cont else 0 for a in attributes])
 
 
 
@@ -103,7 +103,7 @@ def generate(cat):
 
 
 # Generate the trainning data...
-length = sum(train_count.itervalues())
+length = sum(train_count.values())
 int_dm = numpy.empty((length, int_length), dtype=numpy.int32)
 real_dm = numpy.empty((length, real_length), dtype=numpy.float32)
 cats = numpy.empty(length, dtype=numpy.int32)
@@ -111,7 +111,7 @@ cats = numpy.empty(length, dtype=numpy.int32)
 pos = 0
 for cat in categories:
   cat_ind = categories.index(cat)
-  for _ in xrange(train_count[cat]):
+  for _ in range(train_count[cat]):
     int_dm[pos,:], real_dm[pos,:] = generate(cat)
     cats[pos] = cat_ind
     pos += 1
@@ -125,10 +125,10 @@ forest.min_exemplars = 2
 
 oob = forest.train((int_dm, real_dm), cats, 6)
 
-print 'Made forest (oob = %.2f%%):' % ((1.0 - oob[0]) * 100.0)
-for i in xrange(min(len(forest),4)):
-  print '  Tree %i: %i bytes, %i nodes' % (i, forest[i].size, forest[i].nodes())
-print
+print('Made forest (oob = %.2f%%):' % ((1.0 - oob[0]) * 100.0))
+for i in range(min(len(forest),4)):
+  print('  Tree %i: %i bytes, %i nodes' % (i, forest[i].size, forest[i].nodes()))
+print()
 
 
 
@@ -136,8 +136,8 @@ print
 frf.save_forest('temp.rf', forest)
 del forest
 
-print 'Saved to disk size = %i bytes' % os.path.getsize('temp.rf')
-print
+print('Saved to disk size = %i bytes' % os.path.getsize('temp.rf'))
+print()
 
 forest = frf.load_forest('temp.rf')
 os.remove('temp.rf')
@@ -145,12 +145,12 @@ os.remove('temp.rf')
 
 
 # Test...
-print 'Testing:'
+print('Testing:')
 for cat in categories:
   # Generate exemplars...
   int_dm = numpy.empty((256, int_length), dtype=numpy.int32)
   real_dm = numpy.empty((int_dm.shape[0], real_length), dtype=numpy.float32)
-  for i in xrange(int_dm.shape[0]):
+  for i in range(int_dm.shape[0]):
     int_dm[i,:], real_dm[i,:] = generate(cat)
   
   # Test them...
@@ -158,4 +158,4 @@ for cat in categories:
   correct = (numpy.argmax(res['prob'], axis=1)==categories.index(cat)).sum()
   
   # Output results...
-  print '  Of %i %s %i (%.1f%%) were correctly detected.'%(int_dm.shape[0], cat.replace('_', ' '), correct, 100.0*correct/float(int_dm.shape[0]))
+  print('  Of %i %s %i (%.1f%%) were correctly detected.'%(int_dm.shape[0], cat.replace('_', ' '), correct, 100.0*correct/float(int_dm.shape[0])))

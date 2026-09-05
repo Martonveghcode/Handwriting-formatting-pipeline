@@ -10,7 +10,7 @@
 
 
 
-import frf
+from . import frf
 import numpy
 
 
@@ -28,7 +28,7 @@ halflife = 0.1
 # Draw random seeds in a n-d unit cube, assign a class to each...
 seeds = []
 
-for i in xrange(seed_count):
+for i in range(seed_count):
   loc = numpy.random.random(size=dims)
   cat = i % cats
   seeds.append((loc, cat))
@@ -70,7 +70,7 @@ train_feat   = numpy.empty((train, dims), dtype=numpy.float32)
 train_cat    = numpy.empty(train, dtype=numpy.int32)
 train_weight = numpy.empty(train, dtype=numpy.float32)
 
-for i in xrange(train):
+for i in range(train):
   feat, cat = sample()
   
   train_feat[i,:] = feat
@@ -86,7 +86,7 @@ forest.min_exemplars = 4
 
 oob = forest.train(train_feat, [train_cat, ('w', train_weight)], trees)
 
-print 'oob = %f'%oob
+print('oob = %f'%oob)
 
 
 
@@ -95,7 +95,7 @@ test_feat   = numpy.empty((test, dims), dtype=numpy.float32)
 test_cat    = numpy.empty(test, dtype=numpy.int32)
 test_weight = numpy.empty(test, dtype=numpy.float32)
 
-for i in xrange(test):
+for i in range(test):
   feat, cat = sample()
   
   test_feat[i,:] = feat
@@ -108,8 +108,8 @@ for i in xrange(test):
 results = forest.predict(test_feat)
 pred_cat = numpy.argmax(results[0]['prob'], axis=1)
 
-print 'Percentage right = %.1f%%' % (100.0*(test_cat==pred_cat).sum()/float(test))
-print
+print('Percentage right = %.1f%%' % (100.0*(test_cat==pred_cat).sum()/float(test)))
+print()
 
 
 
@@ -117,18 +117,18 @@ print
 correct = numpy.zeros(cats, dtype=numpy.int32)
 total = numpy.zeros(cats, dtype=numpy.int32)
 
-for i in xrange(test):
+for i in range(test):
   total[test_cat[i]] += 1
   if test_cat[i]==pred_cat[i]:
     correct[test_cat[i]] += 1
 
-for i in xrange(cats):
+for i in range(cats):
   if total[i]!=0:
-    print 'class %i: %i of %i correct (%.1f%%)' % (i, correct[i], total[i], 100.0 * correct[i] / float(total[i]))
-print
+    print('class %i: %i of %i correct (%.1f%%)' % (i, correct[i], total[i], 100.0 * correct[i] / float(total[i])))
+print()
 
 
 
 # Test the error method...
-print 'Unweighted test error = %f' % forest.error(test_feat, test_cat)
-print 'Weighted test error = %f' % forest.error(test_feat, (test_cat, ('w', test_weight)))
+print('Unweighted test error = %f' % forest.error(test_feat, test_cat))
+print('Weighted test error = %f' % forest.error(test_feat, (test_cat, ('w', test_weight))))

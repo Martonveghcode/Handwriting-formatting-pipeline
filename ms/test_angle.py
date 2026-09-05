@@ -14,10 +14,10 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -37,7 +37,7 @@ data = numpy.concatenate((clu1, clu2, clu3), axis=0)
 # Visualise by drawing lines - kinda crazy...
 img = numpy.zeros((256, 1024), dtype=numpy.float32)
 for row in data:
-  for y in xrange(img.shape[0]):
+  for y in range(img.shape[0]):
     t = float(y) / float(img.shape[0]-1)
     x = row[0] * t + row[1] * (1.0-t)
     if x<-numpy.pi: x += numpy.pi
@@ -57,14 +57,14 @@ ms.set_data(data, 'df', None, 'AA')
 ms.set_kernel('composite(2:fisher(16.0),2:fisher(16.0))')
 
 modes, indices = ms.cluster()
-print 'Found %i modes' % modes.shape[0]
+print('Found %i modes' % modes.shape[0])
 
 
 
 # Another crazy visualisation, this time the modes...
 img = numpy.zeros((256, 1024), dtype=numpy.float32)
 for row in modes:
-  for y in xrange(img.shape[0]):
+  for y in range(img.shape[0]):
     t = float(y) / float(img.shape[0]-1)
     x = row[0] * t + row[1] * (1.0-t)
     if x<-numpy.pi: x += numpy.pi
@@ -81,8 +81,8 @@ cv.SaveImage('angle_modes.png', array2cv(img))
 # Plot the pdf, different visualisation style...
 img = numpy.zeros((64, 64), dtype=numpy.float32)
 
-for y in xrange(img.shape[0]):
-  for x in xrange(img.shape[1]):
+for y in range(img.shape[0]):
+  for x in range(img.shape[1]):
     ang_x = 2.0 * numpy.pi * (x / float(img.shape[1]-1)) - numpy.pi
     ang_y = 2.0 * numpy.pi * (y / float(img.shape[0]-1)) - numpy.pi
     img[y,x] = ms.prob(numpy.array([ang_x, ang_y]))
@@ -95,7 +95,7 @@ cv.SaveImage('angle_pdf.png', array2cv(img))
 # Try drawing...
 img = numpy.zeros((256, 1024), dtype=numpy.float32)
 for row in ms.draws(512):
-  for y in xrange(img.shape[0]):
+  for y in range(img.shape[0]):
     t = float(y) / float(img.shape[0]-1)
     x = row[0] * t + row[1] * (1.0-t)
     if x<-numpy.pi: x += numpy.pi
@@ -136,7 +136,7 @@ mult_ab.copy_all(mult_b)
 # Visualise all angles...
 img = numpy.zeros((64, 1024,3), dtype=numpy.float32)
 
-for i in xrange(img.shape[1]):
+for i in range(img.shape[1]):
   ang = 2.0 * numpy.pi * i / float(img.shape[1])
   img[:,i,0] = mult_a.prob(numpy.array([ang]))
   img[:,i,1] = mult_ab.prob(numpy.array([ang]))

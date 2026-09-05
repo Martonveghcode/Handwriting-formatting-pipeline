@@ -12,7 +12,7 @@ import random
 import numpy
 import numpy.random
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -35,12 +35,12 @@ ms.set_spatial(random.choice(ms.spatials()))
 
 
 # Print out basic stats...
-print 'kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial())
-print 'exemplars = %i; features = %i' % (ms.exemplars(), ms.features())
-print 'quality = %.3f; epsilon = %.3f; iter_cap = %i' % (ms.quality, ms.epsilon, ms.iter_cap)
-print
+print('kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial()))
+print('exemplars = %i; features = %i' % (ms.exemplars(), ms.features()))
+print('quality = %.3f; epsilon = %.3f; iter_cap = %i' % (ms.quality, ms.epsilon, ms.iter_cap))
+print()
 
 # Query the mode of various points...
 for x in numpy.arange(0.0, 7.0, 0.4):
   mode = ms.mode(numpy.array([x]))
-  print '%.3f: mode = %.3f' % (x, mode)
+  print('%.3f: mode = %.3f' % (x, mode))

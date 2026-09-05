@@ -12,7 +12,7 @@
 
 import unittest
 
-from test_p2 import TestPly2
+from .test_p2 import TestPly2
 
 
 

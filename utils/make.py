@@ -14,10 +14,12 @@ import sys
 import os.path
 import tempfile
 import shutil
+import sysconfig
 
 from distutils.core import setup, Extension
 import distutils.ccompiler
 import distutils.dep_util
+from functools import reduce
 
 
 
@@ -28,19 +30,19 @@ except:
 
 
 
-def make_mod(name, base, source, openCL = False, numpy = False):
+def make_mod(name, base, source, openCL = False, numpy = False, openMP = False):
   """Uses distutils to compile a python module - really just a set of hacks to allow this to be done 'on demand', so it only compiles if the module does not exist or is older than the current source, and after compilation the program can continue on its merry way, and immediatly import the just compiled module. Note that on failure erros can be thrown - its your choice to catch them or not. name is the modules name, i.e. what you want to use with the import statement. base is the base directory for the module, which contains the source file - often you would want to set this to 'os.path.dirname(__file__)', assuming the .py file that imports the module is in the same directory as the code. It is this directory that the module is output to. source is the filename of the source code to compile, or alternativly a list of filenames. openCL indicates if OpenCL is used by the module, in which case it does all the necesary setup - done like this so these setting can be kept centralised, so when they need to be different for a new platform they only have to be changed in one place."""
 
   if __default_compiler==None: raise Exception('No compiler!')
 
   # Work out the various file names - check if we actually need to do anything...
   if not isinstance(source, list): source = [source]
-  source_path = map(lambda s: os.path.join(base, s), source)
-  library_path = os.path.join(base, __default_compiler.shared_object_filename(name))
+  source_path = [os.path.join(base, s) for s in source]
+  library_path = os.path.join(base, name + sysconfig.get_config_var('EXT_SUFFIX'))
 
-  if reduce(lambda a,b: a or b, map(lambda s: distutils.dep_util.newer(s, library_path), source_path)):
+  if reduce(lambda a,b: a or b, [distutils.dep_util.newer(s, library_path) for s in source_path]):
     try:
-      print 'b'
+      print('b')
       # Backup the argv variable and create a temporary directory to do all work in...
       old_argv = sys.argv[:]
       temp_dir = tempfile.mkdtemp()
@@ -48,12 +50,17 @@ def make_mod(name, base, source, openCL = False, numpy = False):
       # Prepare the extension...
       sys.argv = ['','build_ext','--build-lib', base, '--build-temp', temp_dir]
 
-      comp_path = filter(lambda s: not s.endswith('.h'), source_path)
-      depends = filter(lambda s: s.endswith('.h'), source_path)
+      comp_path = [s for s in source_path if not s.endswith('.h')]
+      depends = [s for s in source_path if s.endswith('.h')]
+      compile_args = ['-O3', '-march=native']
+      link_args = []
+      if openMP:
+        compile_args.append('-fopenmp')
+        link_args.append('-fopenmp')
       if openCL:
-        ext = Extension(name, comp_path, include_dirs=['/usr/local/cuda/include', '/opt/AMDAPP/include'], libraries = ['OpenCL'], library_dirs = ['/usr/lib64/nvidia', '/opt/AMDAPP/lib/x86_64'], depends=depends)
+        ext = Extension(name, comp_path, include_dirs=['/usr/local/cuda/include', '/opt/AMDAPP/include'], libraries = ['OpenCL'], library_dirs = ['/usr/lib64/nvidia', '/opt/AMDAPP/lib/x86_64'], depends=depends, extra_compile_args=compile_args, extra_link_args=link_args)
       else:
-        ext = Extension(name, comp_path, depends=depends)
+        ext = Extension(name, comp_path, depends=depends, extra_compile_args=compile_args, extra_link_args=link_args)
 
       # Compile...
       if numpy:

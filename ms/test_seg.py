@@ -13,16 +13,16 @@ import os.path
 import random
 
 import cv
-from utils.cvarray import *
+from .utils.cvarray import *
 import numpy
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
 # Check an image filename has been provided on the command line...
 if len(sys.argv)<2:
-  print "Need an image filename"
+  print("Need an image filename")
   sys.exit(1)
 
 fn = sys.argv[1]
@@ -56,11 +56,11 @@ ms.merge_check_step = 1
 
 
 # Print out basic stats...
-print 'kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial())
-print 'exemplars = %i; features = %i' % (ms.exemplars(), ms.features())
-print 'quality = %.3f; epsilon = %.3f; iter_cap = %i' % (ms.quality, ms.epsilon, ms.iter_cap)
-print 'ident_dist = %.3f; merge_range = %.3f; merge_check_step = %i' % (ms.ident_dist, ms.merge_range, ms.merge_check_step)
-print
+print('kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial()))
+print('exemplars = %i; features = %i' % (ms.exemplars(), ms.features()))
+print('quality = %.3f; epsilon = %.3f; iter_cap = %i' % (ms.quality, ms.epsilon, ms.iter_cap))
+print('ident_dist = %.3f; merge_range = %.3f; merge_check_step = %i' % (ms.ident_dist, ms.merge_range, ms.merge_check_step))
+print()
 
 
 
@@ -68,7 +68,7 @@ print
 modes, indices = ms.cluster()
 image = modes[indices.flatten(),2:].reshape(image.shape)
 
-print 'Found %i modes' % modes.shape[0]
+print('Found %i modes' % modes.shape[0])
 
 #image = ms.modes_data()[:,:,2:] # Gets to the same result (Ignoring floating point variations), but crazy slow.
 

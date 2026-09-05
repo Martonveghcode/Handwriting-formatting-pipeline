@@ -13,16 +13,16 @@ import os.path
 import random
 
 import cv
-from utils.cvarray import *
+from .utils.cvarray import *
 import numpy
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
 # Check an image filename has been provided on the command line...
 if len(sys.argv)<2:
-  print "Need an image filename"
+  print("Need an image filename")
   sys.exit(1)
 
 fn = sys.argv[1]
@@ -47,7 +47,7 @@ ms.set_scale(numpy.array([1.0/spatial_scale, 1.0/spatial_scale, 1.0/colour_scale
 
 ms.quality = 0.0
 
-print 'exemplars = %i; features = %i' % (ms.exemplars(), ms.features())
+print('exemplars = %i; features = %i' % (ms.exemplars(), ms.features()))
 
 
 
@@ -60,8 +60,8 @@ loc = ms.manifolds_data(1)
 output = numpy.zeros(image.shape, dtype=numpy.float32)
 output[:,:,:] = 128.0
 
-for y in xrange(loc.shape[0]):
-  for x in xrange(loc.shape[1]):
+for y in range(loc.shape[0]):
+  for x in range(loc.shape[1]):
     oy = int(loc[y,x,0]+0.5)
     ox = int(loc[y,x,1]+0.5)
     if oy>=0 and oy<output.shape[0] and ox>=0 and ox<output.shape[1]:

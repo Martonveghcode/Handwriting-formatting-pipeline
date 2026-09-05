@@ -12,9 +12,9 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
+from .utils.cvarray import *
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -53,18 +53,18 @@ ms.set_scale(numpy.array([1.5, 1.5]))
 dim = 512
 image = numpy.zeros((dim, dim, 3), dtype=numpy.float32)
 
-for r in xrange(data.shape[0]):
+for r in range(data.shape[0]):
   loc = data[r,:]
   loc = (loc + 5.0) / 10.0
   loc *= dim
   image[int(loc[1]+0.5), int(loc[0]+0.5), :] = 64.0
 
-print 'Projecting samples to line...'
+print('Projecting samples to line...')
 to_render = 4 * 1024
 line = ms.manifolds(data[:to_render], 1, True)
-print 'Done'
+print('Done')
 
-for r in xrange(line.shape[0]):
+for r in range(line.shape[0]):
   loc = line[r,:]
   loc = (loc + 5.0) / 10.0
   loc *= dim

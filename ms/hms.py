@@ -18,8 +18,8 @@ from scipy.weave import inline
 
 import h5py
 
-from utils.cvarray import *
-from utils.start_cpp import start_cpp
+from .utils.cvarray import *
+from .utils.start_cpp import start_cpp
 
 
 
@@ -274,7 +274,7 @@ class HMS:
 if __name__=='__main__':
   import sys
   if len(sys.argv)<2:
-    print 'Expects a filename of an image file for which seg_hierarchy.py has been run'
+    print('Expects a filename of an image file for which seg_hierarchy.py has been run')
     sys.exit(1)
     
   f = HMS(sys.argv[1])

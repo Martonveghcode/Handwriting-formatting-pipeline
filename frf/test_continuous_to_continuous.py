@@ -10,10 +10,10 @@
 
 
 
-from utils.prog_bar import ProgBar
+from .utils.prog_bar import ProgBar
 import numpy
 
-import frf
+from . import frf
 
 
 
@@ -34,7 +34,7 @@ def sample():
 x = numpy.empty((1024*8, 2))
 y = numpy.empty((x.shape[0], 2))
 
-for i in xrange(x.shape[0]):
+for i in range(x.shape[0]):
   x[i,:], y[i,:] = sample()
 
   
@@ -48,10 +48,10 @@ pb = ProgBar()
 oob = forest.train(x, y, 8, pb.callback)
 del pb
 
-print 'Made forest (oob = %.4f):' % oob[0]
-for i in xrange(min(len(forest),4)):
-  print '  Tree %i: %i bytes, %i nodes' % (i, forest[i].size, forest[i].nodes())
-print
+print('Made forest (oob = %.4f):' % oob[0])
+for i in range(min(len(forest),4)):
+  print('  Tree %i: %i bytes, %i nodes' % (i, forest[i].size, forest[i].nodes()))
+print()
 
 
 
@@ -59,19 +59,19 @@ print
 x = numpy.empty((1024, 2))
 y = numpy.empty((x.shape[0], 2))
 
-for i in xrange(x.shape[0]):
+for i in range(x.shape[0]):
   x[i,:], y[i,:] = sample()
 
   
-print 'Test average error:'
+print('Test average error:')
 res = forest.predict(x)[0]
 #print x[0,:], y[0,:], res['mean'][0,:]
 error = numpy.fabs(y - res['mean']).mean(axis=0)
-print error, '(%.4f)' % numpy.sqrt((error**2).sum())
+print(error, '(%.4f)' % numpy.sqrt((error**2).sum()))
 
 
 
 # Check the error method...
-print
-print 'Test error:'
-print '%.4f' % forest.error(x, y)[0]
+print()
+print('Test error:')
+print('%.4f' % forest.error(x, y)[0])

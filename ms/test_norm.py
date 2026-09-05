@@ -9,7 +9,7 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -48,8 +48,8 @@ for kernel in ['uniform', 'triangular', 'epanechnikov', 'cosine', 'gaussian', 'c
     
     # Print their average, which we are hoping is one...
     volume =  p.mean() / sp
-    print 'Kernel = %s; Dims = %i | Monte-Carlo volume = %.3f' % (kernel, dim, volume)
-  print
+    print('Kernel = %s; Dims = %i | Monte-Carlo volume = %.3f' % (kernel, dim, volume))
+  print()
 
 
 # Now for the directional kernels...
@@ -78,5 +78,5 @@ for kernel in ['fisher', 'mirror_fisher']:
       
       # Print their average - should again be one...
       volume = p.mean() * area
-      print 'Kernel = %s; Dims = %i | Monte-Carlo vol = %.3f (max = %.1f)' % (ms.get_kernel(), dim, volume, ms.prob(data))
-  print
+      print('Kernel = %s; Dims = %i | Monte-Carlo vol = %.3f (max = %.1f)' % (ms.get_kernel(), dim, volume, ms.prob(data)))
+  print()

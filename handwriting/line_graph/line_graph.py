@@ -8,7 +8,7 @@
 
 import os.path
 
-from utils.make import make_mod
+from .utils.make import make_mod
 
 
 
@@ -18,4 +18,4 @@ make_mod('line_graph_c', os.path.dirname(__file__), ['line_graph_c.h', 'line_gra
 
 
 # Import the compiled module into this space, so we can pretend they are one and the same, just with automatic compilation...
-from line_graph_c import *
+from .line_graph_c import *

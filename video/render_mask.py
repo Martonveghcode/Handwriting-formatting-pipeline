@@ -92,7 +92,7 @@ class RenderMask(VideoNode):
     if self.output==None:
       self.output = numpy.empty((mask.shape[0], mask.shape[1], 3), dtype=numpy.float32)
 
-    mask = mask.astype(numpy.bool)
+    mask = mask.astype(bool)
 
     if self.bg==None:
       for c in xrange(3):

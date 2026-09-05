@@ -8,7 +8,7 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from gbp import GBP
+from .gbp import GBP
 
 
 
@@ -19,11 +19,11 @@ solver.unary(4, 2.0, 10.0)
 solver.pairwise([4, 4, 3, 3, 5, 5], [3, 5, 0, 6, 2, 8], 1.0, 5.0)
 solver.solve()
 
-print 'H:'
+print('H:')
 mean, prec = solver.result()
-print '% .3f % .3f % .3f' % (mean[0], mean[1], mean[2])
-print '% .3f % .3f % .3f' % (mean[3], mean[4], mean[5])
-print '% .3f % .3f % .3f' % (mean[6], mean[7], mean[8])
+print('% .3f % .3f % .3f' % (mean[0], mean[1], mean[2]))
+print('% .3f % .3f % .3f' % (mean[3], mean[4], mean[5]))
+print('% .3f % .3f % .3f' % (mean[6], mean[7], mean[8]))
 
 
 
@@ -41,11 +41,11 @@ solver.pairwise([0, 3, 6, 7], [3, 6, 7, 8], 1.0, 5.0)
 
 solver.solve()
 
-print 'Circle:'
+print('Circle:')
 mean, prec = solver.result()
-print '% .3f % .3f % .3f' % (mean[0], mean[1], mean[2])
-print '% .3f % .3f % .3f' % (mean[3], mean[4], mean[5])
-print '% .3f % .3f % .3f' % (mean[6], mean[7], mean[8])
+print('% .3f % .3f % .3f' % (mean[0], mean[1], mean[2]))
+print('% .3f % .3f % .3f' % (mean[3], mean[4], mean[5]))
+print('% .3f % .3f % .3f' % (mean[6], mean[7], mean[8]))
 
 
 
@@ -60,11 +60,11 @@ solver.pairwise([5, 7, 4], [4, 4, 8], 1.0, 5.0)
 
 solver.solve()
 
-print 'Q:'
+print('Q:')
 mean, prec = solver.result()
-print '% .3f % .3f % .3f' % (mean[0], mean[1], mean[2])
-print '% .3f % .3f % .3f' % (mean[3], mean[4], mean[5])
-print '% .3f % .3f % .3f' % (mean[6], mean[7], mean[8])
+print('% .3f % .3f % .3f' % (mean[0], mean[1], mean[2]))
+print('% .3f % .3f % .3f' % (mean[3], mean[4], mean[5]))
+print('% .3f % .3f % .3f' % (mean[6], mean[7], mean[8]))
 
 
 
@@ -79,8 +79,8 @@ solver.unary(8, 9, 10.0)
 solver.pairwise(0, 4, -1.5, 10.0)
 solver.solve()
 
-print 'Meh:'
+print('Meh:')
 mean, prec = solver.result()
-print '% .3f % .3f % .3f' % (mean[0], mean[1], mean[2])
-print '% .3f % .3f % .3f' % (mean[3], mean[4], mean[5])
-print '% .3f % .3f % .3f' % (mean[6], mean[7], mean[8])
+print('% .3f % .3f % .3f' % (mean[0], mean[1], mean[2]))
+print('% .3f % .3f % .3f' % (mean[3], mean[4], mean[5]))
+print('% .3f % .3f % .3f' % (mean[6], mean[7], mean[8]))

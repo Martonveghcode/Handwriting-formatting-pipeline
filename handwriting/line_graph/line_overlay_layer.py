@@ -8,7 +8,7 @@
 
 import numpy
 
-from utils_gui.viewport_layer import *
+from .utils_gui.viewport_layer import *
 
 
 

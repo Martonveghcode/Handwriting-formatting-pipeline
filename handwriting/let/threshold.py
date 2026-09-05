@@ -8,16 +8,16 @@
 
 import numpy
 
-from graph_cuts.binary_label import *
-from ms.ms import MeanShift
-from misc.tps import TPS
+from .graph_cuts.binary_label import *
+from .ms.ms import MeanShift
+from .misc.tps import TPS
 
 try:
   from scipy import weave
 except ImportError:
   import weave
 
-from utils.start_cpp import start_cpp
+from .utils.start_cpp import start_cpp
 
 
 
@@ -47,13 +47,13 @@ def cuboid_bg_model(image, percentage = 50.0):
   
   # For each channel in turn calculate a range...
   col_ran = []
-  for c in xrange(3):
+  for c in range(3):
     histo = numpy.bincount(data[:,c], minlength=256)
     cr = tight_total(histo, total)
     col_ran.append(cr)
   
   # Create the region and mark the ranges selected as being background...
-  ret = numpy.zeros((256,256,256), dtype=numpy.bool)
+  ret = numpy.zeros((256,256,256), dtype=bool)
   
   ret[:col_ran[0][0],:,:] = True
   ret[col_ran[0][1]:,:,:] = True
@@ -239,7 +239,7 @@ def cluster_colour(image, size = 16.0, kernel = 'epanechnikov', halves = 3):
   dim = 256
   
   scale = 1
-  for _ in xrange(halves):
+  for _ in range(halves):
     data /= 2
     dim /= 2
     size *= 0.5
@@ -295,7 +295,7 @@ def cluster_colour(image, size = 16.0, kernel = 'epanechnikov', halves = 3):
     
     best_dot = 1e64
     best_vec = None
-    for i in xrange(3):
+    for i in range(3):
       vec = numpy.zeros(3)
       vec[i] = 1.0
       dot = delta.dot(vec)
@@ -347,8 +347,8 @@ def cluster_colour(image, size = 16.0, kernel = 'epanechnikov', halves = 3):
       points.append((loc-perpA+perpB, val))
       points.append((loc-perpA-perpB, val))
   
-  dm_x = numpy.concatenate(map(lambda s: s[0].reshape((1,-1)), points), axis=0)
-  dm_y = numpy.array(map(lambda s: s[1], points))
+  dm_x = numpy.concatenate([s[0].reshape((1,-1)) for s in points], axis=0)
+  dm_y = numpy.array([s[1] for s in points])
   
   # Fit the thin plate spline to the points...
   tps = TPS(3)
@@ -368,7 +368,7 @@ def dilate(mask, repeat = 1):
   """Given a mask this dilates it repeat times, and returns the new mask. Uses a simple diamond mask, which is the 4 neighbours of each pixel."""
   ret = mask.copy()
   
-  for _ in xrange(repeat):
+  for _ in range(repeat):
     prev = ret.copy()
     numpy.logical_or(ret[1:,:], prev[:-1,:], ret[1:,:])
     numpy.logical_or(ret[:-1,:], prev[1:,:], ret[:-1,:])
@@ -383,7 +383,7 @@ def erode(mask, repeat = 1):
   """Given a mask this erodes it repeat times, and returns the new mask. Uses a simple diamond mask, which is the 4 neighbours of each pixel."""
   ret = mask.copy()
   
-  for _ in xrange(repeat):
+  for _ in range(repeat):
     prev = ret.copy()
     numpy.logical_and(ret[1:,:], prev[:-1,:], ret[1:,:])
     numpy.logical_and(ret[:-1,:], prev[1:,:], ret[:-1,:])
@@ -396,8 +396,8 @@ def erode(mask, repeat = 1):
 
 def smooth(mask, repeat = 1):
   """Smooths a mask by repeatedly dilating and then eroding it, the given number of times."""
-  for _ in xrange(repeat): mask = dilate(mask)
-  for _ in xrange(repeat): mask = erode(mask)
+  for _ in range(repeat): mask = dilate(mask)
+  for _ in range(repeat): mask = erode(mask)
   
   return mask
 
@@ -412,14 +412,14 @@ def smooth_signed_distance(mask, iters = 1):
   sigdist[:,:] = 1e64
   
   ## Mark all pixels that are at a transition boundary with the relevant cost - first the diagonals, then the halfs, as half is less than sqrt(2)...
-  tran_sqrt2 = numpy.zeros(sigdist.shape, dtype=numpy.bool)
+  tran_sqrt2 = numpy.zeros(sigdist.shape, dtype=bool)
   numpy.logical_or(mask[1:,1:]!=mask[:-1,:-1], tran_sqrt2[:-1,:-1], tran_sqrt2[:-1,:-1])
   numpy.logical_or(mask[1:,:-1]!=mask[:-1,1:], tran_sqrt2[:-1,1:], tran_sqrt2[:-1,1:])
   numpy.logical_or(mask[:-1,1:]!=mask[1:,:-1], tran_sqrt2[1:,:-1], tran_sqrt2[1:,:-1])
   numpy.logical_or(mask[:-1,:-1]!=mask[1:,1:], tran_sqrt2[1:,1:], tran_sqrt2[1:,1:])
   sigdist[tran_sqrt2] = numpy.sqrt(2.0)
   
-  tran_half = numpy.zeros(sigdist.shape, dtype=numpy.bool)
+  tran_half = numpy.zeros(sigdist.shape, dtype=bool)
   numpy.logical_or(mask[1:,:]!=mask[:-1,:], tran_half[:-1,:], tran_half[:-1,:])
   numpy.logical_or(mask[:-1,:]!=mask[1:,:], tran_half[1:,:], tran_half[1:,:])
   numpy.logical_or(mask[:,1:]!=mask[:,:-1], tran_half[:,:-1], tran_half[:,:-1])
@@ -500,7 +500,7 @@ def smooth_signed_distance(mask, iters = 1):
   temp = sigdist.copy()
   use = sigdist<16.0 # Don't bother with pixels that are too far from the text.
   
-  for _ in xrange(iters):
+  for _ in range(iters):
     support = start_cpp() + """
     int comp_float(const void * a, const void * b)
     {

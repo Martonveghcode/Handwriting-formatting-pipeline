@@ -12,7 +12,7 @@ import unittest
 import math
 import numpy
 
-from utils.make import make_mod
+from .utils.make import make_mod
 
 
 
@@ -22,7 +22,7 @@ make_mod('maxflow_c', os.path.dirname(__file__), ['maxflow_c.h', 'maxflow_c.c'],
 
 
 # Import the compiled module into this space, so we can pretend they are one and the same, just with automatic compilation...
-from maxflow_c import *
+from .maxflow_c import *
 
 
 
@@ -121,7 +121,7 @@ class TestMaxFlow(unittest.TestCase):
     pos_rem = numpy.empty(15, dtype=numpy.float32)
     mf.store_unused(neg_rem, pos_rem)
     
-    for i in xrange(15):
+    for i in range(15):
       self.assertTrue(math.fabs(neg_rem[i]+pos_rem[i]-neg[i]-pos[i])<1e-12)
 
 

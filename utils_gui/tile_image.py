@@ -17,7 +17,7 @@ from collections import OrderedDict
 import cairo
 from gi.repository import Gdk, GdkPixbuf
 
-from viewport_layer import *
+from .viewport_layer import *
 
 
 

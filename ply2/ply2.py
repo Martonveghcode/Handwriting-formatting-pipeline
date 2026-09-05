@@ -20,7 +20,7 @@ from collections import OrderedDict, defaultdict
 
 
 if sys.version_info > (3, 0):
-  basestring = str
+  str = str
   xrange = range
 
 
@@ -54,11 +54,11 @@ def verify(data):
     
   # Check the type is sane...
   if 'type' in data:
-    if isinstance(data['type'], basestring):
+    if isinstance(data['type'], str):
       raise TypeError('Type must be a list of strings, not a single string.')
       
     for item in data['type']:
-      if not isinstance(item, basestring):
+      if not isinstance(item, str):
         raise TypeError('Type must be a string.')
       
       if len(item.split())!=1 or item.strip()!=item:
@@ -66,22 +66,22 @@ def verify(data):
 
   # Make sure the meta key/value pairs are all valid...
   if 'meta' in data:
-    for key, value in data['meta'].items():
-      if not isinstance(key, basestring):
+    for key, value in list(data['meta'].items()):
+      if not isinstance(key, str):
         raise TypeError('Meta name is not a string.')
       
       if len(key.split())!=1 or key.strip()!=key:
         raise KeyError('Name of meta variable contains white space.')
       
-      if not (isinstance(value, basestring) or isinstance(value, int) or isinstance(value, float)):
+      if not (isinstance(value, str) or isinstance(value, int) or isinstance(value, float)):
         raise TypeError('Unsuported meta variable type.')
   
   # Check the comments work...
   if 'comment' in data:
-    for i in xrange(len(data['comment'])):
+    for i in range(len(data['comment'])):
       if i not in data['comment']:
         raise KeyError('Comments not indexed with contiguous natural numbers starting at zero')
-      if not isinstance(data['comment'][i], basestring):
+      if not isinstance(data['comment'][i], str):
         raise ValueError('Comment line not an instance of basestring.')
       if '\n' in data['comment'][i]:
         raise ValueError('Comment line contains new line.')
@@ -93,16 +93,16 @@ def verify(data):
   
   # Loop and check all elements, including all details...
   if 'element' in data:
-    for key, value in data['element'].items():
-      if not isinstance(key, basestring):
+    for key, value in list(data['element'].items()):
+      if not isinstance(key, str):
         raise TypeError('Element name must be a string.')
       
       if len(key.split())!=1 or key.strip()!=key:
         raise KeyError('Name of element contains white space.')
       
       shape = None
-      for prop, arr in value.items():
-        if not isinstance(prop, basestring):
+      for prop, arr in list(value.items()):
+        if not isinstance(prop, str):
           raise TypeError('Property name must be a string.')
         
         if len(prop.split())!=1 or prop.strip()!=prop:
@@ -129,14 +129,14 @@ def verify(data):
           if arr.dtype.itemsize not in [2, 4, 8, 16]:
             raise TypeError('Element array has float element with unsuported size.')
           
-        elif arr.dtype==numpy.object:
+        elif arr.dtype==object:
           base = None # None for unknown type, True for string, instance of ndarray for array mode.
           for item in arr.flat:
             if base is None:
-              base = True if isinstance(item, basestring) else item
+              base = True if isinstance(item, str) else item
             
             elif base is True:
-              if not isinstance(item, basestring):
+              if not isinstance(item, str):
                 raise TypeError('All entrys in an element array of strings must be a string.')
             
             else:
@@ -185,10 +185,10 @@ def encoding_to_dtype(enc, force_int = False):
     if dims<1:
       raise ValueError('Array requires a positive dimension count.')
     
-    return (numpy.object, dims, encoding_to_dtype(parts[2],True)[0], encoding_to_dtype(parts[3])[0])
+    return (object, dims, encoding_to_dtype(parts[2],True)[0], encoding_to_dtype(parts[3])[0])
   
   if parts[0]=='string':
-    return (numpy.object, None, encoding_to_dtype(parts[1],True)[0], None)
+    return (object, None, encoding_to_dtype(parts[1],True)[0], None)
   
   raise IOError('Unrecognised encoding in ply 2 file.')
 
@@ -214,7 +214,7 @@ def array_to_encoding(arr):
     if arr.dtype.itemsize==8: return 'real64'
     if arr.dtype.itemsize==16: return 'real128'
     
-  if arr.dtype==numpy.object:
+  if arr.dtype==object:
     if len(arr.flat)!=0 and isinstance(arr.flat[0], numpy.ndarray):
       return 'array:%i:nat32:%s' % (len(arr.flat[0].shape), array_to_encoding(arr.flat[0]))
     else:
@@ -226,7 +226,7 @@ def array_to_encoding(arr):
 
 def to_meta_line(key, value):
   """Given a key and value from a dictionary of meta data this returns the requisite meta line for a ply 2 file header. For internal use only."""
-  if isinstance(value, basestring):
+  if isinstance(value, str):
     return 'meta string:nat32 %s %i %s\n' % (key, len(value), value)
   
   if isinstance(value, int):
@@ -273,7 +273,7 @@ def read_meta_line(line):
 def to_element_line(key, value):
   """Given an item in the element dictionary, which represents an element, this returns the element line for the header."""
   shape = (0, )
-  for prop, arr in value.items():
+  for prop, arr in list(value.items()):
     shape = arr.shape
     break
   
@@ -374,7 +374,7 @@ def write_ascii(f, element, order):
   for prop in order:
     arr = element[prop]
     
-    if arr.dtype==numpy.object:
+    if arr.dtype==object:
       if len(arr.flat)!=0 and isinstance(arr.flat[0], numpy.ndarray): # Array
         parts.append([ascii_array(x) for x in arr.flat])
       
@@ -424,21 +424,21 @@ def write_binary(f, element, order, little=True):
         arr = arr.byteswap()
       
       # Convert to bytes...
-      data = arr.tostring()
+      data = arr.tobytes()
       
       # Chop up into a list ready for interleaving, and record...
       size = arr.dtype.itemsize
-      parts.append([data[i:i+size] for i in xrange(0, len(data), size)])
+      parts.append([data[i:i+size] for i in range(0, len(data), size)])
     
     elif arr.dtype in [numpy.float16, numpy.float32, numpy.float64, numpy.float128]:
       # Convert to bytes...
-      data = arr.tostring()
+      data = arr.tobytes()
       
       # Chop up into a list ready for interleaving, and record...
       size = arr.dtype.itemsize
-      parts.append([data[i:i+size] for i in xrange(0, len(data), size)])
+      parts.append([data[i:i+size] for i in range(0, len(data), size)])
       
-    elif arr.dtype==numpy.object:
+    elif arr.dtype==object:
       # Arrays or strings...
       if isinstance(arr.flat[0], numpy.ndarray):
         def prepare(a):
@@ -450,7 +450,7 @@ def write_binary(f, element, order, little=True):
           if a.dtype.byteorder not in order_accept and a.dtype in [numpy.int8, numpy.int16, numpy.int32, numpy.int64, numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]:
             a = a.byteswap()
           
-          return shape.tostring() + a.tostring()
+          return shape.tobytes() + a.tobytes()
         
         parts.append([prepare(a) for a in arr.flat])
 
@@ -462,7 +462,7 @@ def write_binary(f, element, order, little=True):
           if size.dtype.byteorder not in order_accept:
             size = size.byteswap()
           
-          return size.tostring() + s
+          return size.tobytes() + s
       
         parts.append([prepare(s) for s in arr.flat])
       
@@ -483,7 +483,7 @@ def write(f, data):
   verify(data)
   
   # If we have been passed a string open the file...
-  if isinstance(f, basestring):
+  if isinstance(f, str):
     f = open(f, 'wb')
     do_close = True
   else:
@@ -504,11 +504,11 @@ def write(f, data):
     f.write(('type %s\n' % ' '.join(data['type'])).encode('utf8'))
   
   if 'meta' in data:
-    for key, value in data['meta'].items():
+    for key, value in list(data['meta'].items()):
       f.write(to_meta_line(key, value).encode('utf8'))
   
   if 'comment' in data:
-    for i in xrange(len(data['comment'])):
+    for i in range(len(data['comment'])):
       f.write(('comment %s\n' % data['comment'][i]).encode('utf8'))
   
   compress = None
@@ -524,13 +524,13 @@ def write(f, data):
   element_order = []
   property_order = dict()
   if 'element' in data:
-    for key, value in data['element'].items():
+    for key, value in list(data['element'].items()):
       element_order.append(key)
       property_order[key] = []
       
       f.write(to_element_line(key, value).encode('utf8'))
 
-      for prop, arr in value.items():
+      for prop, arr in list(value.items()):
         f.write(('property %s %s\n' % (array_to_encoding(arr), prop)).encode('utf8'))
         property_order[key].append(prop)
   
@@ -574,7 +574,7 @@ def write(f, data):
 
 
 # Regular expression for doing a 'split' without throwing away white space. Relies on the fact the Python re module is greedy, and tries to make each match as long as possible...
-ws_keep_split = re.compile(b'(\s*[^\s]*)')
+  ws_keep_split = re.compile(br'(\s*[^\s]*)')
 
 
 
@@ -588,7 +588,7 @@ class ReadAsciiArray:
   
   def __call__(self):
     shape = []
-    for _ in xrange(self.dims):
+    for _ in range(self.dims):
       shape.append(int(self.next_token()))
 
     ret = numpy.empty(shape, dtype=self.store_dtype)
@@ -645,7 +645,7 @@ def read_ascii(f, element, prop):
   # To keep the reading loop sane encode it as a list of tuples, where each tuple is an array to output to followed by a (token eatting) function to call to get the data to be written...
   shape = None
   ops = []
-  for name, array in element.items():
+  for name, array in list(element.items()):
     
     if shape==None:
       shape = array.shape
@@ -656,7 +656,7 @@ def read_ascii(f, element, prop):
     elif array.dtype in [numpy.float16, numpy.float32, numpy.float64, numpy.float128]:
       ops.append((array, read_float))
     
-    elif array.dtype==numpy.object:
+    elif array.dtype==object:
       # String or array...
       arr_dtype, dims, shape_dtype, store_dtype = prop[name]
       
@@ -700,7 +700,7 @@ class ReadBinaryInt:
   
   def __call__(self):
     data = self.f.read(self.dtype.itemsize)
-    arr = numpy.fromstring(data, self.dtype)
+    arr = numpy.frombuffer(data, self.dtype)
     if self.byteswap:
       arr = arr.byteswap()
     return arr[0]
@@ -713,7 +713,7 @@ class ReadBinaryFloat:
     self.dtype = dtype
   
   def __call__(self):
-    return numpy.fromstring(self.f.read(self.dtype.itemsize), self.dtype)[0]
+    return numpy.frombuffer(self.f.read(self.dtype.itemsize), self.dtype)[0]
 
 
 
@@ -725,7 +725,7 @@ class ReadBinaryString:
     
   def __call__(self):
     shape_data = self.f.read(self.shape_dtype.itemsize)
-    length = numpy.fromstring(shape_data, self.shape_dtype)
+    length = numpy.frombuffer(shape_data, self.shape_dtype)
     if self.byteswap: length = length.byteswap()
     
     data = self.f.read(length[0])
@@ -747,7 +747,7 @@ class ReadBinaryArray:
     
   def __call__(self):
     shape_data = self.f.read(self.shape_dtype.itemsize * self.dims)
-    shape = numpy.fromstring(shape_data, self.shape_dtype)
+    shape = numpy.frombuffer(shape_data, self.shape_dtype)
     if self.byteswap:
       shape = shape.byteswap()
     
@@ -756,7 +756,7 @@ class ReadBinaryArray:
     if len(data)!=len_data:
       raise EOFError('Ran out data reading array.')
     
-    ret = numpy.fromstring(data, self.store_dtype).reshape(shape)
+    ret = numpy.frombuffer(data, self.store_dtype).reshape(shape)
     if self.byteswap_data:
       ret = ret.byteswap()
       
@@ -774,7 +774,7 @@ def read_binary(f, element, prop, little = True):
   # To keep the reading loop sane encode it as a list of tuples, where each tuple is an array to output to followed by a (data eatting) functor to call to get the data to be written...
   shape = None
   ops = []
-  for name, array in element.items():
+  for name, array in list(element.items()):
     
     if shape==None:
       shape = array.shape
@@ -785,7 +785,7 @@ def read_binary(f, element, prop, little = True):
     elif array.dtype in [numpy.float16, numpy.float32, numpy.float64, numpy.float128]:
       ops.append((array, ReadBinaryFloat(f, array.dtype)))
     
-    elif array.dtype==numpy.object:
+    elif array.dtype==object:
       arr_dtype, dims, shape_dtype, store_dtype = prop[name]
       
       if dims==None:
@@ -838,7 +838,7 @@ def read(f):
   """This reads a ply2 file (first variable), where file can either be the filename of a file to open or a file-like object to .read()/.readline() all of the data from. Note that if a file is passed in it must have been opened in binary mode, even if using the ascii format. It tries to leave the cursor at the end of the ply2 file, and will when compression is off, but may not otherwise. Returns the dictionary representing the file."""
   
   # If we have been passed a string open the file...
-  if isinstance(f, basestring):
+  if isinstance(f, str):
     f = open(f, 'rb')
     do_close = True
   else:

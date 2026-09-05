@@ -15,7 +15,10 @@
 
 import os.path
 import shutil
+import time
 
+import gi
+gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
 
 from line_graph.utils_gui.viewer import Viewer
@@ -221,9 +224,9 @@ class HST(Gtk.Window):
     self.wrong_place_cost = Gtk.SpinButton()
     self.space_mult = Gtk.SpinButton()
     
-    self.match_strength.set_adjustment(Gtk.Adjustment(8.0, 0.1, 128.0, 0.1, 1.0, 4.0))
-    self.wrong_place_cost.set_adjustment(Gtk.Adjustment(4.0, 0.0, 128.0, 0.1, 1.0, 4.0))
-    self.space_mult.set_adjustment(Gtk.Adjustment(0.5, 0.0, 1.0, 0.1, 0.5, 0.5))
+    self.match_strength.set_adjustment(Gtk.Adjustment(30.0, 0.1, 128.0, 0.1, 1.0, 4.0))
+    self.wrong_place_cost.set_adjustment(Gtk.Adjustment(6.0, 0.0, 128.0, 0.1, 1.0, 4.0))
+    self.space_mult.set_adjustment(Gtk.Adjustment(0.3, 0.0, 1.0, 0.1, 0.5, 0.5))
     
     self.match_strength.set_digits(1)
     self.wrong_place_cost.set_digits(1)
@@ -247,7 +250,7 @@ class HST(Gtk.Window):
     sel_vert.pack_start(Gtk.Separator(), False, False, 8)
     
     self.randomness = Gtk.SpinButton()
-    self.randomness.set_adjustment(Gtk.Adjustment(0.1, 0.01, 1.0, 0.01, 0.1, 0.1))
+    self.randomness.set_adjustment(Gtk.Adjustment(0.05, 0.01, 1.0, 0.01, 0.1, 0.1))
     self.randomness.set_digits(2)
     
     l = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -281,8 +284,8 @@ class HST(Gtk.Window):
     self.default_gap = Gtk.SpinButton()
     self.default_gap_space = Gtk.SpinButton()
     
-    self.default_gap.set_adjustment(Gtk.Adjustment(0.2, -0.5, 2.0, 0.1, 0.2, 0.4))
-    self.default_gap_space.set_adjustment(Gtk.Adjustment(0.6, 0.0, 4.0, 0.1, 0.2, 0.4))
+    self.default_gap.set_adjustment(Gtk.Adjustment(0.0, -0.5, 2.0, 0.1, 0.2, 0.4))
+    self.default_gap_space.set_adjustment(Gtk.Adjustment(0.3, 0.0, 4.0, 0.1, 0.2, 0.4))
     
     self.default_gap.set_digits(2)
     self.default_gap_space.set_digits(2)
@@ -306,7 +309,7 @@ class HST(Gtk.Window):
     
     self.space_match_id.set_adjustment(Gtk.Adjustment(10.0, 0.0, 128.0, 1.0, 2.0, 4.0))
     self.space_match_char.set_adjustment(Gtk.Adjustment(3.0, 0.0, 128.0, 1.0, 2.0, 4.0))
-    self.space_match_type.set_adjustment(Gtk.Adjustment(2.0, 0.0, 128.0, 1.0, 2.0, 4.0))
+    self.space_match_type.set_adjustment(Gtk.Adjustment(3.0, 0.0, 128.0, 1.0, 2.0, 4.0))
     self.space_has_space.set_adjustment(Gtk.Adjustment(0.01, 0.0, 1.0, 0.01, 0.05, 0.1))
     
     self.space_match_id.set_digits(1)
@@ -348,15 +351,15 @@ class HST(Gtk.Window):
     space_vert.pack_start(Gtk.Separator(), False, False, 8)
     
     self.flow_gbp = Gtk.CheckButton('Tweak glyphs flow')
-    self.flow_gbp.set_active(True)
+    self.flow_gbp.set_active(False)
     space_vert.pack_start(self.flow_gbp, False, False, 0)
     
     self.flow_pos_sd = Gtk.SpinButton()
-    self.flow_pos_sd.set_adjustment(Gtk.Adjustment(1.0, 0.01, 10.0, 0.01, 0.1, 0.1))
+    self.flow_pos_sd.set_adjustment(Gtk.Adjustment(0.1, 0.01, 10.0, 0.01, 0.1, 0.1))
     self.flow_pos_sd.set_digits(3)
     
     self.flow_offset_sd = Gtk.SpinButton()
-    self.flow_offset_sd.set_adjustment(Gtk.Adjustment(0.2, 0.01, 10.0, 0.01, 0.1, 0.1))
+    self.flow_offset_sd.set_adjustment(Gtk.Adjustment(0.05, 0.01, 10.0, 0.01, 0.1, 0.1))
     self.flow_offset_sd.set_digits(3)
     
     l = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -392,7 +395,7 @@ class HST(Gtk.Window):
     self.chunk_radius = Gtk.SpinButton()
     self.chunk_density = Gtk.SpinButton()
     
-    self.chunk_choices.set_adjustment(Gtk.Adjustment(8, 1, 17, 2, 1, 1))
+    self.chunk_choices.set_adjustment(Gtk.Adjustment(12, 1, 17, 2, 1, 1))
     self.chunk_memory.set_adjustment(Gtk.Adjustment(4, 0, 17, 2, 1, 1))
     self.chunk_samples.set_adjustment(Gtk.Adjustment(4, 2, 17, 2, 1, 1))
     self.chunk_direction.set_adjustment(Gtk.Adjustment(1.0, 0.1, 17.0, 0.5, 1.0, 1.0))
@@ -459,8 +462,8 @@ class HST(Gtk.Window):
     self.line_height = Gtk.SpinButton()
     self.line_spacing = Gtk.SpinButton()
     
-    self.line_height.set_adjustment(Gtk.Adjustment(192.0, 1.0, 512.0, 8.0, 16.0, 32.0))
-    self.line_spacing.set_adjustment(Gtk.Adjustment(1.5, 0.0, 8.0, 0.1, 0.2, 0.4))
+    self.line_height.set_adjustment(Gtk.Adjustment(195.0, 1.0, 512.0, 8.0, 16.0, 32.0))
+    self.line_spacing.set_adjustment(Gtk.Adjustment(1.0, 0.0, 8.0, 0.1, 0.2, 0.4))
     
     self.line_height.set_digits(1)
     self.line_spacing.set_digits(2)
@@ -508,7 +511,7 @@ class HST(Gtk.Window):
     self.blend_smooth.set_adjustment(Gtk.Adjustment(2.0, 0.0, 8.0, 0.1, 0.1, 0.1))
     self.blend_alpha.set_adjustment(Gtk.Adjustment(1.0, 0.0, 8.0, 0.1, 0.1, 0.1))
     self.blend_unary.set_adjustment(Gtk.Adjustment(1.0, 0.0, 8.0, 0.1, 0.1, 0.1))
-    self.blend_overlap.set_adjustment(Gtk.Adjustment(0.0, 0.0, 1.0, 0.1, 0.1, 0.1))
+    self.blend_overlap.set_adjustment(Gtk.Adjustment(0.05, 0.0, 1.0, 0.1, 0.1, 0.1))
     
     self.blend_radius.set_digits(1)
     self.blend_stretch.set_digits(1)
@@ -570,7 +573,7 @@ class HST(Gtk.Window):
     
     
     # Cache of textures used for rendering, to save loading them each time...
-    self.textures = TextureCache(32)
+    self.textures = TextureCache(256, 2 * 1024**3)
     
     # To optimise the presentation of information by the viewer...
     self.seg = None
@@ -580,17 +583,18 @@ class HST(Gtk.Window):
   def __generate(self, widget):
     """Generates a new sample of text given all the current settings"""
     if self.glyph_db.empty():
-      print 'No database avaliable - aborting.'
+      print('No database avaliable - aborting.')
       return
       
-    print 'Starting generation...'
+    generation_started = time.perf_counter()
+    print('Starting generation...')
     buf = self.text.get_buffer()
     txt = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False).split('\n')
     
     lines = []
-    for i in xrange(len(txt)):
+    for i in range(len(txt)):
       if len(txt[i])==0: continue
-      print 'L%i::Selecting Glyphs...'%(i+1)
+      print('L%i::Selecting Glyphs...'%(i+1))
       
       fetch_count = self.fetch_count.get_value()
       match_strength = self.match_strength.get_value()
@@ -613,7 +617,7 @@ class HST(Gtk.Window):
         glyph_list = select_glyphs_dp(txt[i], self.glyph_db, fetch_count, match_strength, wrong_place_cost, space_mult, cfunc, True)
     
     
-      print 'L%i::Positioning Glyphs...'%(i+1)
+      print('L%i::Positioning Glyphs...'%(i+1))
       
       default_gap = self.default_gap.get_value()
       default_gap_space = self.default_gap_space.get_value()
@@ -633,24 +637,24 @@ class HST(Gtk.Window):
       
       
       if self.flow_gbp.get_active():
-        print 'L%i::Adjusting flow (vertical offset)...'%(i+1)
+        print('L%i::Adjusting flow (vertical offset)...'%(i+1))
         pos_sd = self.flow_pos_sd.get_value()
         offset_sd = self.flow_offset_sd.get_value()
         glyph_layout = layout_flow(glyph_layout, pos_sd, offset_sd, self.flow_gbp_rf.get_active(), self.flow_gbp_cp.get_active())
     
     
-      print 'L%i::Joining up Glyphs...'%(i+1)
+      print('L%i::Joining up Glyphs...'%(i+1))
       if self.link_type.get_active()==0:
         lg_layout = stitch_noop(glyph_layout)
       else:
         lg_layout = stitch_connect(glyph_layout, self.link_type.get_active()==2, not self.chunk_db.empty(), i)
     
     
-      print 'L%i::Combining to obtain final line...'%(i+1)
+      print('L%i::Combining to obtain final line...'%(i+1))
       line = combine_seperate(lg_layout)
     
     
-      print 'L%i::Tweaking scale, moving...'%(i+1)
+      print('L%i::Tweaking scale, moving...'%(i+1))
       hg = numpy.eye(3, dtype=numpy.float32)
       hg[1,2] = i*self.line_spacing.get_value() # Number of lines high to make each line.
       hg[2,2] /= self.line_height.get_value()
@@ -663,13 +667,13 @@ class HST(Gtk.Window):
     self.line.from_many(*lines)
     
     if not self.chunk_db.empty():
-      print '::Changing pen style...'
+      print('::Changing pen style...')
       
       self.chunk_db.set_params(int(self.chunk_samples.get_value()), self.chunk_direction.get_value(), self.chunk_radius.get_value(), self.chunk_density.get_value())
       
       self.line = self.chunk_db.convert(self.line, int(self.chunk_choices.get_value()), self.chunk_adv_match.get_active(), self.textures, int(self.chunk_memory.get_value()))
     
-    print '::Recording to image...'
+    print('::Recording to image...')
     
     blend_radius = self.blend_radius.get_value()
     blend_stretch = self.blend_stretch.get_value()
@@ -680,13 +684,19 @@ class HST(Gtk.Window):
     blend_overlap = self.blend_overlap.get_value()
     linear = self.render_linear.get_active()
     
-    image, count = render(self.line, 8, self.textures, self.blending.get_active(), blend_radius, blend_stretch, blend_edge, blend_smooth, blend_alpha, blend_unary, blend_overlap, linear)
+    render_profile = {}
+    image, count = render(self.line, 8, self.textures, self.blending.get_active(), blend_radius, blend_stretch, blend_edge, blend_smooth, blend_alpha, blend_unary, blend_overlap, linear, render_profile)
     self.image.from_array(image)
     
-    if count!=0: print '  |Solved %i min cut problems'%count
+    if count!=0: print('  |Solved %i min cut problems'%count)
     
     
-    print 'Generation complete'
+    cache = self.textures.stats()
+    print('Render timing: draw/paint={draw_paint_seconds:.3f}s, alpha={alpha_seconds:.3f}s, overlap={overlap_seconds:.3f}s, blend={blend_seconds:.3f}s, output={output_seconds:.3f}s, total={total_seconds:.3f}s'.format(**render_profile))
+    print('Texture cache: {entries} entries, {bytes:.1f} MiB, {hits} hits, {misses} misses, {evictions} evictions'.format(
+      entries=cache['entries'], bytes=cache['bytes'] / 1024.0**2,
+      hits=cache['hits'], misses=cache['misses'], evictions=cache['evictions']))
+    print('Generation complete in %.3fs' % (time.perf_counter() - generation_started))
     self.viewer.reset_view()
     self.__line_visible(self.action_show_line)
 
@@ -711,13 +721,13 @@ class HST(Gtk.Window):
     response = dialog.run()
     if response==Gtk.ResponseType.OK:
       for fn in dialog.get_filenames():
-        print 'Openning %s...'%fn
+        print('Openning %s...'%fn)
       
         count = self.glyph_db.add(fn)
         if count!=0:
           self.file_list.append([fn,count])
       
-        print 'File loaded'
+        print('File loaded')
     
     dialog.destroy()
 
@@ -751,13 +761,13 @@ class HST(Gtk.Window):
     response = dialog.run()
     if response==Gtk.ResponseType.OK:
       for fn in dialog.get_filenames():
-        print 'Openning %s...'%fn
+        print('Openning %s...'%fn)
       
         count = self.chunk_db.add(fn)
         if count!=0:
           self.chunk_list.append([fn,count])
       
-        print 'File loaded'
+        print('File loaded')
     
     dialog.destroy()
 
@@ -1055,7 +1065,7 @@ class HST(Gtk.Window):
     if response==Gtk.ResponseType.OK:
       fn = dialog.get_filename()
       if not fn.endswith('.png'): fn += '.png'
-      print 'Saving to %s'%fn
+      print('Saving to %s'%fn)
 
       # Save the file...        
       if os.path.exists(fn):
@@ -1063,7 +1073,7 @@ class HST(Gtk.Window):
       
       self.image.get_original().write_to_png(fn)
       
-    print 'Success!'
+    print('Success!')
   
     dialog.destroy()
   
@@ -1105,8 +1115,8 @@ class HST(Gtk.Window):
       
       count = int(count.get_value())
       
-      for i in xrange(count):
-        print '::::Doing %i of %i:' % (i+1, count)
+      for i in range(count):
+        print('::::Doing %i of %i:' % (i+1, count))
         fn = base_fn + '%04i'%i + ext
         
         # Generate a new draw...
@@ -1117,9 +1127,9 @@ class HST(Gtk.Window):
           shutil.copy2(fn, fn+'~')
         self.image.get_original().write_to_png(fn)
         
-        print '::::Saved to %s.' % fn
+        print('::::Saved to %s.' % fn)
       
-      print 'All done!'
+      print('All done!')
   
     dialog.destroy()
   
@@ -1146,7 +1156,7 @@ class HST(Gtk.Window):
       self.source_y = -1.0
       
       for tag in tags:
-        if len(filter(lambda c: c!='_', tag[0]))==1:
+        if len([c for c in tag[0] if c!='_'])==1:
           self.key = tag[0]
         if tag[0].startswith('file:'):
           self.lg_fn = os.path.basename(tag[0][5:])

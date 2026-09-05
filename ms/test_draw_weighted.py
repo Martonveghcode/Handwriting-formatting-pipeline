@@ -12,10 +12,10 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -26,8 +26,8 @@ samples = 64
 data = numpy.empty((samples*samples, 3))
 
 i = 0
-for y in xrange(samples):
-  for x in xrange(samples):
+for y in range(samples):
+  for x in range(samples):
     data[i,0] = y / float(samples-1)
     data[i,1] = x / float(samples-1)
     
@@ -44,7 +44,7 @@ ms.set_spatial('kd_tree')
 
 
 # Choose a reasonable size...
-print 'Selecting size using loo:'
+print('Selecting size using loo:')
 p = ProgBar()
 ms.scale_loo_nll(callback = p.callback)
 del p
@@ -54,9 +54,9 @@ del p
 # Plot the pdf, for reference...
 image = numpy.zeros((pixels, pixels, 3), dtype=numpy.float32)
 
-print 'Rendering probability map:'
+print('Rendering probability map:')
 p = ProgBar()
-for row in xrange(pixels):
+for row in range(pixels):
   p.callback(row, pixels)
   sam = numpy.append(numpy.linspace(0.0, 1.0, pixels).reshape((-1,1)), (row / float(pixels-1)) * numpy.ones(pixels).reshape((-1,1)), axis=1)
   image[row, :, :] = ms.probs(sam).reshape((-1,1))
@@ -74,7 +74,7 @@ draw = ms.draws(1024)
 
 image = numpy.zeros((pixels, pixels, 3), dtype=numpy.float32)
 
-for r in xrange(draw.shape[0]):
+for r in range(draw.shape[0]):
   loc = draw[r,:]
   loc *= pixels
   try:

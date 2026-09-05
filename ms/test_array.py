@@ -10,16 +10,16 @@
 
 import numpy.random
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
 # Create the most perverse data matrix array I can imagine...
 data = numpy.random.uniform(size=(3,2,2,2))
 
-print 'Insane input array:'
-print data
-print
+print('Insane input array:')
+print(data)
+print()
 
 
 # Create a MeanShift object with the data...
@@ -29,7 +29,7 @@ ms.set_data(data, 'fdbf') # This should make your head hurt. If it doesn't seek 
 
 
 # Loop and print the feature vectors it sees...
-print 'What MeanShift sees:'
-for i in xrange(len(ms)):
-  print i, '|', ms[i]
-print
+print('What MeanShift sees:')
+for i in range(len(ms)):
+  print(i, '|', ms[i])
+print()

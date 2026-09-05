@@ -565,7 +565,7 @@ InfoSet * InfoSet_new(DataMatrix * dm, const char * codes, PyArrayObject * ratio
 {
  // Get the number of features, verify the inputs...
   int feats = dm->features;
-  if ((codes!=NULL)&&(strlen(codes)!=feats))
+  if ((codes!=NULL)&&(strlen(codes)!=(size_t)feats))
   {
    PyErr_SetString(PyExc_ValueError, "Information measure codes wrong length for data matrix");
    return NULL; 
@@ -781,5 +781,5 @@ float InfoSet_view_entropy(InfoSet * this, IndexView * iv, int depth)
 
 void Setup_Information(void)
 {
- import_array();  
+ if (_import_array()<0) return;
 }

@@ -9,9 +9,9 @@
 import numpy
 import numpy.linalg as la
 
-from hg.homography import match as match_hg
+from .hg.homography import match as match_hg
 
-from line_graph.utils_gui.viewport_layer import *
+from .line_graph.utils_gui.viewport_layer import *
 
 
 
@@ -39,8 +39,8 @@ class RuleLayer(Layer):
     # Default set of matches - set nice and far away...
     self.match = [] # List of last 4 matches, as ((source x, source y), (dest x, dest y))
     
-    for x in xrange(2):
-      for y in xrange(2):
+    for x in range(2):
+      for y in range(2):
         px = x - 0.5
         py = y - 0.5
         
@@ -97,7 +97,7 @@ class RuleLayer(Layer):
     # Iterate the lines and calculate the boudn for each - quite involved...
     ret = []
     
-    for line in xrange(min_line, max_line):
+    for line in range(min_line, max_line):
       # Get the 4 points that define the line, including the spacing term...
       pnt[0,:] = numpy.dot(self.homography, numpy.array((0.0, line - spacing, 1.0), dtype=numpy.float32))
       pnt[1,:] = numpy.dot(self.homography, numpy.array((1.0, line - spacing, 1.0), dtype=numpy.float32))
@@ -152,10 +152,10 @@ class RuleLayer(Layer):
     
     new_match = ((p[0], p[1]), (ex, ey), False)
     
-    user_matches = len(filter(lambda m: m[2]==False, self.match))
+    user_matches = len([m for m in self.match if m[2]==False])
     
     # Check if they are tweaking a pre-existing point - if so we update replacing that one, rather than doing anything clever...
-    for mi in xrange(4):
+    for mi in range(4):
       dx = self.match[mi][0][0] - new_match[0][0]
       dy = self.match[mi][0][1] - new_match[0][1]
       dist = numpy.sqrt(dx*dx + dy*dy)
@@ -176,7 +176,7 @@ class RuleLayer(Layer):
         self.match[mi] = new_match
         
         # Fill in the source and dest with the matches...
-        for r in xrange(4):
+        for r in range(4):
           source[r,0] = self.match[r][0][0]
           source[r,1] = self.match[r][0][1]
       
@@ -196,12 +196,12 @@ class RuleLayer(Layer):
       self.match[0] = new_match
 
       # Redo the other matches to be an offset...
-      for mi in xrange(1, 4):
+      for mi in range(1, 4):
         offset = (self.match[mi][1][0] + ex - sx, self.match[mi][1][1] + ey - sy)
         self.match[mi] = (self.match[mi][0], offset, True)
       
       # Fill in the source and dest with the matches...
-      for r in xrange(4):
+      for r in range(4):
         source[r,0] = self.match[r][0][0]
         source[r,1] = self.match[r][0][1]
       
@@ -225,11 +225,11 @@ class RuleLayer(Layer):
       vec1 = (vec1[1], -vec1[0])
       
       s = 1e-2
-      self.match[2] = ((self.match[0][0][0] + s*vec0[0], self.match[0][0][1] + s*vec0[01]), (self.match[0][1][0] + s*vec1[0], self.match[0][1][1] + s*vec1[1]), True)
-      self.match[3] = ((self.match[1][0][0] + s*vec0[0], self.match[1][0][1] + s*vec0[01]), (self.match[1][1][0] + s*vec1[0], self.match[1][1][1] + s*vec1[1]), True)
+      self.match[2] = ((self.match[0][0][0] + s*vec0[0], self.match[0][0][1] + s*vec0[0o1]), (self.match[0][1][0] + s*vec1[0], self.match[0][1][1] + s*vec1[1]), True)
+      self.match[3] = ((self.match[1][0][0] + s*vec0[0], self.match[1][0][1] + s*vec0[0o1]), (self.match[1][1][0] + s*vec1[0], self.match[1][1][1] + s*vec1[1]), True)
       
       # Fill in the source and dest with the matches...
-      for r in xrange(4):
+      for r in range(4):
         source[r,0] = self.match[r][0][0]
         source[r,1] = self.match[r][0][1]
       
@@ -250,10 +250,10 @@ class RuleLayer(Layer):
       vec1 = numpy.array(self.match[1][1]) - numpy.array(self.match[0][1])
       
       s = 1e-2
-      self.match[3] = ((self.match[2][0][0] + s*vec0[0], self.match[2][0][1] + s*vec0[01]), (self.match[2][1][0] + s*vec1[0], self.match[2][1][1] + s*vec1[1]), True)
+      self.match[3] = ((self.match[2][0][0] + s*vec0[0], self.match[2][0][1] + s*vec0[0o1]), (self.match[2][1][0] + s*vec1[0], self.match[2][1][1] + s*vec1[1]), True)
       
       # Fill in the source and dest with the matches...
-      for r in xrange(4):
+      for r in range(4):
         source[r,0] = self.match[r][0][0]
         source[r,1] = self.match[r][0][1]
       
@@ -269,12 +269,12 @@ class RuleLayer(Layer):
     # Time for something complex - start by iterate replacing every match in the array with the new one, storing the resulting homography for each...
     hhl = []
     
-    for kill in xrange(4):
+    for kill in range(4):
       match = self.match[:]
       match[kill] = new_match
     
       # Fill in the source and dest with the matches...
-      for r in xrange(4):
+      for r in range(4):
         source[r,0] = match[r][0][0]
         source[r,1] = match[r][0][1]
       
@@ -347,7 +347,7 @@ class RuleLayer(Layer):
     high_y = max(cp1[1], cp2[1], cp3[1], cp4[1])
 
     # Iterate all integers in the range, each being a line, and render it...
-    for i in xrange(int(numpy.ceil(low_y)), int(numpy.floor(high_y))+1):
+    for i in range(int(numpy.ceil(low_y)), int(numpy.floor(high_y))+1):
       # Get two points on the line...
       p1 = numpy.dot(self.homography, numpy.array((0.0, i, 1.0), dtype=numpy.float32))
       p2 = numpy.dot(self.homography, numpy.array((1.0, i, 1.0), dtype=numpy.float32))
@@ -398,7 +398,7 @@ class RuleLayer(Layer):
       low_x  = min(cp1[0], cp2[0], cp3[0], cp4[0])
       high_x = max(cp1[0], cp2[0], cp3[0], cp4[0])
       
-      for i in xrange(int(numpy.ceil(low_x)), int(numpy.floor(high_x))+1):
+      for i in range(int(numpy.ceil(low_x)), int(numpy.floor(high_x))+1):
         # Get two points on the line...
         p1 = numpy.dot(self.homography, numpy.array((i, 0.0, 1.0), dtype=numpy.float32))
         p2 = numpy.dot(self.homography, numpy.array((i, 1.0, 1.0), dtype=numpy.float32))

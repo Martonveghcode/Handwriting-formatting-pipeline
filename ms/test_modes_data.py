@@ -12,7 +12,7 @@ import random
 import numpy
 import numpy.random
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -39,18 +39,18 @@ ms.set_spatial('kd_tree')
 
 
 # Print out basic stats...
-print 'kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial())
-print 'exemplars = %i; features = %i' % (ms.exemplars(), ms.features())
-print 'quality = %.3f; epsilon = %.3f; iter_cap = %i' % (ms.quality, ms.epsilon, ms.iter_cap)
-print
+print('kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial()))
+print('exemplars = %i; features = %i' % (ms.exemplars(), ms.features()))
+print('quality = %.3f; epsilon = %.3f; iter_cap = %i' % (ms.quality, ms.epsilon, ms.iter_cap))
+print()
 
 
 
 # Calculate the modes for all vectors, then print out some randomly selected convergances...
 res = ms.modes_data()
 
-order = range(data.shape[0])
+order = list(range(data.shape[0]))
 random.shuffle(order)
 
 for i in order[:32]:
-  print '%i:\n  mean  = %s\n  value = %s\n  mode  = %s' % (i, str(means[i//quantity]), str(data[i,:]), str(res[i,:]))
+  print('%i:\n  mean  = %s\n  value = %s\n  mode  = %s' % (i, str(means[i//quantity]), str(data[i,:]), str(res[i,:])))

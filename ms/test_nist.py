@@ -13,10 +13,10 @@ import os.path
 import random
 
 import cv
-from utils.cvarray import *
+from .utils.cvarray import *
 import numpy
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -26,7 +26,7 @@ from ms import MeanShift
 
 # Get a list of files to process...
 fn_list = os.listdir('nist')
-fn_list = filter(lambda fn: fn[-9:]!='_line.png', fn_list)
+fn_list = [fn for fn in fn_list if fn[-9:]!='_line.png']
 
 
 
@@ -38,7 +38,7 @@ ms.set_spatial('iter_dual')
 
 # Process each in turn...
 for fn in fn_list:
-  print 'Doing %s...' % fn
+  print('Doing %s...' % fn)
   fn = os.path.join('nist',fn)
   
   # Load image and binarise...
@@ -57,8 +57,8 @@ for fn in fn_list:
   output = numpy.zeros((image.shape[0], image.shape[1], 3), dtype=numpy.float32)
   output[:,:,:] = 0.0
 
-  for y in xrange(loc.shape[0]):
-    for x in xrange(loc.shape[1]):
+  for y in range(loc.shape[0]):
+    for x in range(loc.shape[1]):
       if image[y,x]:
         oy = int(loc[y,x,0]+0.5)
         ox = int(loc[y,x,1]+0.5)

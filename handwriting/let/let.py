@@ -13,31 +13,33 @@ import numpy
 import time
 import datetime
 
+import gi
+gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf, Pango
 import cairo
 
-from line_graph.utils_gui.viewer import Viewer
-from line_graph.utils_gui.tile_image import TileImage
-from line_graph.utils_gui.tile_mask import TileMask
-from line_graph.utils_gui.tile_value import TileValue
-from line_graph.utils_gui.reticle_overlay import ReticleOverlay
+from .line_graph.utils_gui.viewer import Viewer
+from .line_graph.utils_gui.tile_image import TileImage
+from .line_graph.utils_gui.tile_mask import TileMask
+from .line_graph.utils_gui.tile_value import TileValue
+from .line_graph.utils_gui.reticle_overlay import ReticleOverlay
 
-from line_graph.line_layer import LineLayer
-from line_graph.line_overlay_layer import LineOverlayLayer
-from rule_layer import RuleLayer
+from .line_graph.line_layer import LineLayer
+from .line_graph.line_overlay_layer import LineOverlayLayer
+from .rule_layer import RuleLayer
 
 
-from misc.tps import TPS
-import threshold
-from threshold_line import ThresholdLine
-import skeleton
-import line_feat
-import infer_alpha
-from line_graph import line_graph
+from .misc.tps import TPS
+from . import threshold
+from .threshold_line import ThresholdLine
+from . import skeleton
+from . import line_feat
+from . import infer_alpha
+from .line_graph import line_graph
 
-from auto_tag import AutoTagDialog
+from .auto_tag import AutoTagDialog
 
-from ply2 import ply2
+from .ply2 import ply2
 
 
 
@@ -490,7 +492,7 @@ class LET(Gtk.Window):
         self.fn = self.fn[:-10] + '.png'
       if self.fn.endswith('_override.png'):
         self.fn = self.fn[:-13] + '.png'
-      print 'Openning %s...'%self.fn
+      print('Openning %s...'%self.fn)
 
       self.image.load(self.fn)
       self.viewer.reset_view()
@@ -505,7 +507,7 @@ class LET(Gtk.Window):
       
       lg_fn = os.path.splitext(self.fn)[0] + '.line_graph'
       if os.path.exists(lg_fn):
-        print 'Line graph detected - opening %s...'%lg_fn
+        print('Line graph detected - opening %s...'%lg_fn)
         f = open(lg_fn, 'r')
         data = ply2.read(f)
         f.close()
@@ -555,22 +557,22 @@ class LET(Gtk.Window):
       self.__line_visible(self.action_show_line)
       
       # Report back...
-      print 'File(s) loaded'
+      print('File(s) loaded')
 
     dialog.destroy()
     
     
   def __save_lg(self, widget):
     if self.fn==None:
-      print 'You must first open an image'
+      print('You must first open an image')
       return
     if self.line==None:
-      print 'No line graph to save'
+      print('No line graph to save')
       return
       
     fn = os.path.splitext(self.fn)[0] + '.line_graph'
     
-    print 'Saving to %s'%fn
+    print('Saving to %s'%fn)
     
     if os.path.exists(fn):
       shutil.copy2(fn, fn+'~')
@@ -593,7 +595,7 @@ class LET(Gtk.Window):
     
     fn = os.path.splitext(self.fn)[0] + '_override.png'
     if self.threshold_lock.max()>0 or os.path.exists(fn):
-      print 'Saving threshold assist to %s'%fn
+      print('Saving threshold assist to %s'%fn)
       
       if os.path.exists(fn):
         shutil.copy2(fn, fn+'~')
@@ -620,9 +622,9 @@ class LET(Gtk.Window):
       
       # Save it to the required file...
       surface.write_to_png(fn)
-      print 'Saved %s' % fn
+      print('Saved %s' % fn)
     
-    print 'Success!'
+    print('Success!')
 
 
   def __fullscreen(self, widget):
@@ -667,7 +669,7 @@ class LET(Gtk.Window):
     if self.density==None or dld==True:
       fn = os.path.join(os.path.dirname(self.fn), 'density.tps')
       if dld==False and os.path.isfile(fn):
-        print 'Loading density model...'
+        print('Loading density model...')
         f = open(fn, 'r')
         data = ply2.read(f)
         f.close()
@@ -679,54 +681,54 @@ class LET(Gtk.Window):
         self.density = TPS(3)
         self.density.learn(x, None, a, b)
       else:
-        print 'Calculating density model...'
+        print('Calculating density model...')
         #model = threshold.cuboid_bg_model(image, 95.0)
         _, self.density = threshold.cluster_colour(image, size=self.threshold_cluster_size, halves=self.threshold_cluster_halves)
       
-    print 'Calculating density map...'
+    print('Calculating density map...')
     density = line_feat.apply_tps_all(image, self.density)
     
-    print 'Regularising density map...'
+    print('Regularising density map...')
     density = threshold.density_median(density, 2, 1.0)
     
     if self.alt_threshold:
-      print 'Applying alternate threshold model...'
+      print('Applying alternate threshold model...')
       tl = ThresholdLine()
       self.threshold = tl(1.0-numpy.exp(-32.0*density))
       self.threshold[self.threshold_lock==1] = False
       self.threshold[self.threshold_lock==2] = True
     else:
-      print 'Applying threshold model...'
+      print('Applying threshold model...')
       try:
         #self.threshold = threshold.threshold_reg(image, model)
         self.threshold = threshold.threshold_density(image, density, self.threshold_gc_bg_cost, self.threshold_gc_data_mult, self.threshold_gc_smooth_max, self.threshold_gc_lonely, self.threshold_gc_half_life, self.threshold_lock)
       except MemoryError:
-        print 'Out of memory when applying graph cuts - falling back to normal thresholding'
+        print('Out of memory when applying graph cuts - falling back to normal thresholding')
         #self.threshold = threshold.threshold(image, model)
         self.threshold = density > 0.1
       
     # Smooth the threshold, then force the lock...
     if self.threshold_smooth!=0:
-      print 'Smoothing...'
+      print('Smoothing...')
       self.threshold = threshold.smooth(self.threshold, self.threshold_smooth)
       self.threshold[self.threshold_lock==1] = False
       self.threshold[self.threshold_lock==2] = True
       
     # As above, but using a more sophisticated approach...
     if self.threshold_smooth_sd!=0 and self.alt_threshold!=True:
-      print 'Smoothing signed distance field...'
+      print('Smoothing signed distance field...')
       self.threshold = threshold.smooth_signed_distance(self.threshold, self.threshold_smooth_sd)
       self.threshold[self.threshold_lock==1] = False
       self.threshold[self.threshold_lock==2] = True
     
     # Terminate islands that are too small - above can leave the occasional small hole...
     if self.threshold_islands!=0:
-      print 'Nuking islands...'
+      print('Nuking islands...')
       self.threshold = threshold.nuke_islands(self.threshold, self.threshold_islands)
       self.threshold[self.threshold_lock==1] = False
       self.threshold[self.threshold_lock==2] = True
     
-    print 'Thresholding complete.'
+    print('Thresholding complete.')
     
     # Arrange for the threshold to be rendered when needed...
     self.threshold_tiles.set_mask(self.threshold)
@@ -780,18 +782,18 @@ class LET(Gtk.Window):
 
 
     # Use erosion of the threshold to get a line...
-    print 'Thinning the threshold to get an initial line...'
+    print('Thinning the threshold to get an initial line...')
     mask = skeleton.zhang_suen(self.threshold)
     mask = skeleton.cull_lonely(mask)
       
-    print 'Calculating initial line radius...'
+    print('Calculating initial line radius...')
     radius = line_feat.calc_radius(self.threshold, mask)
-    print '  |Radius range = [%.1f...%.1f]' % (radius[mask].min(), radius[mask].max())
+    print('  |Radius range = [%.1f...%.1f]' % (radius[mask].min(), radius[mask].max()))
     
     
     # Refine the line using subspace constrained mean shift...
     if False: #self.density!=None:
-      print 'Refining the line...'
+      print('Refining the line...')
       density = line_feat.apply_tps_all(image, self.density)
       rad = numpy.median(radius[mask])
       mask, subspace = skeleton.refine_mask(density, mask, rad)
@@ -799,23 +801,23 @@ class LET(Gtk.Window):
       mask = skeleton.zhang_suen(mask) # Just incase.
       mask = skeleton.cull_lonely(mask)
         
-      print 'Recalculating radius...'
+      print('Recalculating radius...')
       radius = line_feat.calc_radius(self.threshold, mask)
-      print '  |Radius range = [%.1f...%.1f]' % (radius[mask].min(), radius[mask].max())
+      print('  |Radius range = [%.1f...%.1f]' % (radius[mask].min(), radius[mask].max()))
     
     
     if self.density!=None:
-      print 'Calculating line density...'
+      print('Calculating line density...')
       average = line_feat.calc_average(image, mask, radius)
       density = line_feat.apply_tps(average, mask, self.density)
       density[density<0.0] = 0.0
       density[density>2.0] = 2.0
-      print '  |Density range = [%.2f...%.2f]' % (density[mask].min(), density[mask].max())
+      print('  |Density range = [%.2f...%.2f]' % (density[mask].min(), density[mask].max()))
     else: density = None
     
     
     if self.line!=None:
-      print 'Storing current tags...'
+      print('Storing current tags...')
       tags = self.line.get_tags()
       splits = self.line.get_splits()
       
@@ -840,7 +842,7 @@ class LET(Gtk.Window):
       splits = []
     
     
-    print 'Generating the line graph...'
+    print('Generating the line graph...')
     self.line = line_graph.LineGraph()
     if density is not None:
       self.line.from_mask(mask, radius, density)
@@ -850,7 +852,7 @@ class LET(Gtk.Window):
     
     
     if len(tags)!=0 or len(splits)!=0:
-      print 'Reapplying tags onto new line...'
+      print('Reapplying tags onto new line...')
       
       for tag in tags:
         if len(tag)==2:
@@ -875,7 +877,7 @@ class LET(Gtk.Window):
           self.line.add_link(edge_a, t_a, edge_b, t_b)
     
     
-    print 'Line extraction complete.'
+    print('Line extraction complete.')
     self.alg_time += time.clock() - start_time
     
     self.line_tiles.set_line(self.line)
@@ -921,7 +923,7 @@ class LET(Gtk.Window):
         if segment==None: self.tag.set_text('')
         else:
           tags = self.line.get_tags(segment)
-          self.tag.set_text('|'.join(map(lambda t: t[0], tags)))
+          self.tag.set_text('|'.join([t[0] for t in tags]))
       
       self.segment = segment
       
@@ -992,7 +994,7 @@ class LET(Gtk.Window):
           link_collisions = self.line.intersect_links(sx, sy, ex, ey)
           if len(link_collisions)==1:
             self.line.rem(link_collisions[0][1], link_collisions[0][2])
-            print 'split: Break link between edges %i and %i' % (link_collisions[0][1], link_collisions[0][3])
+            print('split: Break link between edges %i and %i' % (link_collisions[0][1], link_collisions[0][3]))
             self.viewer.queue_draw()
             return
         
@@ -1000,18 +1002,18 @@ class LET(Gtk.Window):
         if len(collisions)==1:  
           # Simple split...
           self.line.add_split(collisions[0][0], collisions[0][1])
-          print 'split: edge %i at position %.3f' % (collisions[0][0], collisions[0][1])
+          print('split: edge %i at position %.3f' % (collisions[0][0], collisions[0][1]))
         elif len(collisions)==0:
-          print 'split: cancelled as no intercept'
+          print('split: cancelled as no intercept')
         else:
-          print 'split: cancelled due to ambiguity'
+          print('split: cancelled due to ambiguity')
       else:
         count = self.line.merge(ss, es)
         if count!=0:
-          print 'merge: Dissolved %i splits' % count
+          print('merge: Dissolved %i splits' % count)
         else:
           self.line.add_link(se_i, se_t, ee_i, ee_t)
-          print 'merge: Created a link from edge %i to edge %i'%(se_i, ee_i)
+          print('merge: Created a link from edge %i to edge %i'%(se_i, ee_i))
 
       self.viewer.queue_draw()
     
@@ -1036,7 +1038,7 @@ class LET(Gtk.Window):
       preferX = numpy.fabs(ex-sx) > numpy.fabs(ey-sy)
       
       change = False
-      for s in xrange(steps+1):
+      for s in range(steps+1):
         x = int(sx + dx*s)
         y = int(sy + dy*s)
       
@@ -1069,7 +1071,7 @@ class LET(Gtk.Window):
     segment = self.line_overlay.get_segment()
     
     if edge!=None and self.segment!=None and self.segment==segment:
-      new_tags = map(lambda s: s.strip(), widget.get_text().split('|'))
+      new_tags = [s.strip() for s in widget.get_text().split('|')]
       old_tags = self.line.get_tags(self.segment)
       
       # Remove tags that are no longer there...
@@ -1078,10 +1080,10 @@ class LET(Gtk.Window):
           self.line.rem(tag[1], tag[2])
       
       # Create a list of tags that are there...
-      old_tags = map(lambda t: t[0], old_tags)
+      old_tags = [t[0] for t in old_tags]
       
       # Add tags that are new...
-      for tag in filter(lambda t: t not in old_tags, new_tags):
+      for tag in [t for t in new_tags if t not in old_tags]:
         if tag!='': self.line.add_tag(edge, t, tag)
       
       # Segmentation is now invalid - need to prevent bad stuff occuring (This is horribly inefficient)...
@@ -1139,7 +1141,7 @@ class LET(Gtk.Window):
       
       # Save it to the required file...
       surface.write_to_png(fn)
-      print 'Saved %s' % fn
+      print('Saved %s' % fn)
       
       self.alg_time += time.clock() - start_time
   
@@ -1295,7 +1297,7 @@ class LET(Gtk.Window):
       shutil.copy2(fn, fn+'~')
 
     # Save the ply file containing a thin plate spline (should have used ply2 library, but can't be arsed to change it now!)...
-    print 'Saving density file...'
+    print('Saving density file...')
     f = open(fn, 'w')
     
     f.write('ply\n')
@@ -1316,13 +1318,13 @@ class LET(Gtk.Window):
     
     f.write('end_header\n')
     
-    for i in xrange(x.shape[0]):
+    for i in range(x.shape[0]):
       f.write('%f %f %f %f\n' % (x[i,0], x[i,1], x[i,2], a[i]))
     
     f.write('%f %f %f %f\n' % (b[0], b[1], b[2], b[3]))
     
     f.close()
-    print 'Done.'
+    print('Done.')
 
 
   def __auto_tag(self, widget):

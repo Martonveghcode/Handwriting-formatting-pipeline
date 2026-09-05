@@ -21,6 +21,178 @@
 
 
 
+#define PIXEL_BLOCK_CAPACITY 65536
+
+
+
+typedef struct CompositeCrop
+{
+ Pixel ** original_data;
+ int original_width;
+ int original_height;
+ int min_x;
+ int min_y;
+} CompositeCrop;
+
+
+static int Composite_crop_to_content(Composite * this, CompositeCrop * crop)
+{
+ int valid = 0;
+ int min_x = this->width;
+ int max_x = -1;
+ int min_y = this->height;
+ int max_y = -1;
+
+ size_t part;
+ for (part=0; part<this->part_capacity; part++)
+ {
+  PartBounds * bounds = this->part_bounds + part;
+  if (bounds->valid==0) continue;
+  valid = 1;
+  if (bounds->min_x<min_x) min_x = bounds->min_x;
+  if (bounds->max_x>max_x) max_x = bounds->max_x;
+  if (bounds->min_y<min_y) min_y = bounds->min_y;
+  if (bounds->max_y>max_y) max_y = bounds->max_y;
+ }
+
+ if (valid==0) return 0;
+
+ int width = max_x - min_x + 1;
+ int height = max_y - min_y + 1;
+ Pixel ** data = (Pixel**)malloc((size_t)width * height * sizeof(Pixel*));
+ if (data==NULL)
+ {
+  PyErr_NoMemory();
+  return -1;
+ }
+
+ int y;
+ for (y=0; y<height; y++)
+ {
+  memcpy(data + (size_t)y*width,
+         this->data + (size_t)(y+min_y)*this->width + min_x,
+         (size_t)width * sizeof(Pixel*));
+ }
+
+ crop->original_data = this->data;
+ crop->original_width = this->width;
+ crop->original_height = this->height;
+ crop->min_x = min_x;
+ crop->min_y = min_y;
+
+ this->data = data;
+ this->width = width;
+ this->height = height;
+ return 1;
+}
+
+
+static void Composite_restore_crop(Composite * this, CompositeCrop * crop)
+{
+ int y;
+ for (y=0; y<this->height; y++)
+ {
+  memcpy(crop->original_data + (size_t)(y+crop->min_y)*crop->original_width + crop->min_x,
+         this->data + (size_t)y*this->width,
+         (size_t)this->width * sizeof(Pixel*));
+ }
+
+ free(this->data);
+ this->data = crop->original_data;
+ this->width = crop->original_width;
+ this->height = crop->original_height;
+}
+
+
+
+static int Composite_prepare_part(Composite * this, int part)
+{
+ if ((size_t)(part + 1) > this->part_capacity)
+ {
+  size_t old_capacity = this->part_capacity;
+  size_t new_capacity = (old_capacity==0) ? 64 : old_capacity;
+  while (new_capacity < (size_t)(part + 1)) new_capacity *= 2;
+
+  PartBounds * resized = (PartBounds*)realloc(this->part_bounds, new_capacity * sizeof(PartBounds));
+  if (resized==NULL)
+  {
+   PyErr_NoMemory();
+   return -1;
+  }
+
+  this->part_bounds = resized;
+  this->part_capacity = new_capacity;
+
+  size_t i;
+  for (i=old_capacity; i<new_capacity; i++) this->part_bounds[i].valid = 0;
+ }
+
+ this->part_bounds[part].valid = 0;
+ this->active_part = part;
+ this->active_count = 0;
+ return 0;
+}
+
+
+static int Composite_record_pixel(Composite * this, int part, size_t pos)
+{
+ if (this->active_count==this->active_capacity)
+ {
+  size_t new_capacity = (this->active_capacity==0) ? 4096 : 2 * this->active_capacity;
+  size_t * resized = (size_t*)realloc(this->active_pixels, new_capacity * sizeof(size_t));
+  if (resized==NULL)
+  {
+   PyErr_NoMemory();
+   return -1;
+  }
+  this->active_pixels = resized;
+  this->active_capacity = new_capacity;
+ }
+
+ this->active_pixels[this->active_count++] = pos;
+
+ int x = pos % this->width;
+ int y = pos / this->width;
+ PartBounds * bounds = this->part_bounds + part;
+ if (bounds->valid==0)
+ {
+  bounds->valid = 1;
+  bounds->min_x = bounds->max_x = x;
+  bounds->min_y = bounds->max_y = y;
+ }
+ else
+ {
+  if (x<bounds->min_x) bounds->min_x = x;
+  if (x>bounds->max_x) bounds->max_x = x;
+  if (y<bounds->min_y) bounds->min_y = y;
+  if (y>bounds->max_y) bounds->max_y = y;
+ }
+
+ return 0;
+}
+
+
+static void Composite_expand_bounds(Composite * this, int part, int x, int y)
+{
+ if ((part<0)||((size_t)part>=this->part_capacity)) return;
+ PartBounds * bounds = this->part_bounds + part;
+ if (bounds->valid==0)
+ {
+  bounds->valid = 1;
+  bounds->min_x = bounds->max_x = x;
+  bounds->min_y = bounds->max_y = y;
+ }
+ else
+ {
+  if (x<bounds->min_x) bounds->min_x = x;
+  if (x>bounds->max_x) bounds->max_x = x;
+  if (y<bounds->min_y) bounds->min_y = y;
+  if (y>bounds->max_y) bounds->max_y = y;
+ }
+}
+
+
+
 void Composite_new(Composite * this)
 {
  this->height = 0;
@@ -29,6 +201,14 @@ void Composite_new(Composite * this)
  
  this->storage = NULL;
  this->new_pixel = NULL;
+
+ this->active_pixels = NULL;
+ this->active_count = 0;
+ this->active_capacity = 0;
+ this->active_part = -1;
+
+ this->part_bounds = NULL;
+ this->part_capacity = 0;
  
  this->bg.r = 1.0;
  this->bg.g = 1.0;
@@ -53,6 +233,16 @@ void Composite_dealloc(Composite * this)
   free(to_die);
  }
  this->new_pixel = NULL;
+
+ free(this->active_pixels);
+ this->active_pixels = NULL;
+ this->active_count = 0;
+ this->active_capacity = 0;
+ this->active_part = -1;
+
+ free(this->part_bounds);
+ this->part_bounds = NULL;
+ this->part_capacity = 0;
 }
 
 
@@ -71,7 +261,7 @@ static PyObject * Composite_new_py(PyTypeObject * type, PyObject * args, PyObjec
 static void Composite_dealloc_py(Composite * self)
 {
  Composite_dealloc(self);
- self->ob_type->tp_free((PyObject*)self);
+ Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 
@@ -89,6 +279,7 @@ void Composite_set_size(Composite * this, int width, int height)
   size_t size = height * width * sizeof(Pixel*);
   this->data = (Pixel**)malloc(size);
   memset(this->data, 0, size);
+  this->next_part = 0;
 }
 
 
@@ -134,12 +325,12 @@ Pixel * Composite_new_pixel(Composite * this)
  // Check if the list of unused pixels is null, if so fill it up...
   if (this->new_pixel==NULL)
   {
-   PixelBlock * npb = (PixelBlock*)malloc(sizeof(PixelBlock) + this->width * this->height * sizeof(Pixel));
+   PixelBlock * npb = (PixelBlock*)malloc(sizeof(PixelBlock) + PIXEL_BLOCK_CAPACITY * sizeof(Pixel));
    npb->next = this->storage;
    this->storage = npb;
    
    int i;
-   for (i=(this->width*this->height-1); i>=0; i--)
+   for (i=(PIXEL_BLOCK_CAPACITY-1); i>=0; i--)
    {
     this->storage->data[i].next = this->new_pixel;
     this->new_pixel = &this->storage->data[i];
@@ -274,7 +465,8 @@ void Composite_draw_line(Composite * this, int part, float sx, float sy, float s
       // Create a new Pixel...
        Pixel * np = Composite_new_pixel(this);
        np->next = targ;
-       this->data[y*this->width + x] = np;
+       size_t pos = (size_t)y*this->width + x;
+       this->data[pos] = np;
        
        np->c.r = 1.0;
        np->c.g = 1.0;
@@ -288,6 +480,8 @@ void Composite_draw_line(Composite * this, int part, float sx, float sy, float s
        np->u = (hg[0] * ax + hg[1] * ay + hg[2]) / div;
        np->v = (hg[3] * ax + hg[4] * ay + hg[5]) / div;
        np->w = iw;
+
+       Composite_record_pixel(this, part, pos);
      }
      else
      {
@@ -328,6 +522,7 @@ int Composite_draw_line_graph(Composite * this, LineGraph * lg, float bias, floa
 {
  // Assign a part number...
   int ret = this->next_part;
+  if (Composite_prepare_part(this, ret)!=0) return -1;
   this->next_part += 1;
   
  // Loop and draw each edge in turn...
@@ -420,6 +615,7 @@ static PyObject * Composite_draw_line_graph_py(Composite * self, PyObject * args
   
  // Call through to the function... 
   int ret = Composite_draw_line_graph(self, lg, bias, stretch);
+  if ((ret<0)&&PyErr_Occurred()) return NULL;
   
  // Return the part number...
   return Py_BuildValue("i", ret);
@@ -429,19 +625,21 @@ static PyObject * Composite_draw_line_graph_py(Composite * self, PyObject * args
 
 void Composite_paint_test_pattern(Composite * this, int part)
 {
- int y, x;
- for (y=0; y<this->height; y++)
+ int use_active = (part==this->active_part);
+ size_t work_count = use_active ? this->active_count : (size_t)this->width * this->height;
+ long long work;
+
+ #pragma omp parallel for if(work_count > 65536) schedule(static)
+ for (work=0; work<(long long)work_count; work++)
  {
-  for (x=0; x<this->width; x++)
+  size_t pos = use_active ? this->active_pixels[work] : (size_t)work;
+  Pixel * targ = this->data[pos];
+  if ((targ!=NULL)&&(targ->part==part))
   {
-   Pixel * targ = this->data[y*this->width + x];
-   if ((targ!=NULL)&&(targ->part==part))
-   {
-    targ->c.r *= 0.5 + 0.3*sin(targ->u) + 0.2*sin(0.1*targ->v);
-    targ->c.g *= 0.5;
-    targ->c.b *= 0.5 + 0.3*sin(targ->v) + 0.2*sin(0.1*targ->u);
-    //targ->c.a *= 1.0;
-   }
+   targ->c.r *= 0.5 + 0.3*sin(targ->u) + 0.2*sin(0.1*targ->v);
+   targ->c.g *= 0.5;
+   targ->c.b *= 0.5 + 0.3*sin(targ->v) + 0.2*sin(0.1*targ->u);
+   //targ->c.a *= 1.0;
   }
  }
 }
@@ -466,14 +664,17 @@ static PyObject * Composite_paint_test_pattern_py(Composite * self, PyObject * a
 // Textures the composite, coordinates of a pixel are (data + y*y_stride + x*x_stride), with the first byte blue, the second green and the third red. The dim values are to clamp if a coordinate goes outside. No interpolation. If inc_alpha is not 0 the fourth byte is alpha (pre-multiplied), which is then used...
 void Composite_paint_texture_nearest(Composite * this, int part, unsigned char * data, int y_dim, int x_dim, int y_stride, int x_stride, int inc_alpha)
 {
- int y, x;
- for (y=0; y<this->height; y++)
+ int use_active = (part==this->active_part);
+ size_t work_count = use_active ? this->active_count : (size_t)this->width * this->height;
+ long long work;
+
+ #pragma omp parallel for if(work_count > 65536) schedule(static)
+ for (work=0; work<(long long)work_count; work++)
  {
-  for (x=0; x<this->width; x++)
+  size_t pos = use_active ? this->active_pixels[work] : (size_t)work;
+  Pixel * targ = this->data[pos];
+  if ((targ!=NULL)&&(targ->part==part))
   {
-   Pixel * targ = this->data[y*this->width + x];
-   if ((targ!=NULL)&&(targ->part==part))
-   {
     int sy = floor(targ->v+0.5);
     if (sy<0) sy = 0;
     if (sy>=y_dim) sy = y_dim-1;
@@ -509,7 +710,6 @@ void Composite_paint_texture_nearest(Composite * this, int part, unsigned char *
      targ->c.b *= pixel[0] / 255.0;
      //targ->c.a *= 1.0;
     }
-   }
   }
  }
 }
@@ -523,20 +723,20 @@ static PyObject * Composite_paint_texture_nearest_py(Composite * self, PyObject 
   if (!PyArg_ParseTuple(args, "O!|i", &PyArray_Type, &image, &part)) return NULL;
   
  // Some error checking...
-  if (image->nd!=3)
+  if (PyArray_NDIM(image)!=3)
   {
    PyErr_SetString(PyExc_TypeError, "Image numpy array must have 3 dimensions - height, width then colour channels.");
    return NULL;
   }
   
-  if (image->descr->kind!='u' || image->descr->elsize!=sizeof(char))
+  if (PyArray_TYPE(image)!=NPY_UINT8)
   {
    PyErr_SetString(PyExc_TypeError, "Image must be made of uint8.");
    return NULL;
   }
   
  // Do the work...
-  Composite_paint_texture_nearest(self, part, (unsigned char*)(void*)image->data, image->dimensions[0], image->dimensions[1], image->strides[0], image->strides[1], (image->dimensions[2]>3) ? 1 : 0);
+  Composite_paint_texture_nearest(self, part, (unsigned char*)PyArray_DATA(image), PyArray_DIM(image, 0), PyArray_DIM(image, 1), PyArray_STRIDE(image, 0), PyArray_STRIDE(image, 1), (PyArray_DIM(image, 2)>3) ? 1 : 0);
   
  // Return None...
   Py_INCREF(Py_None);
@@ -548,14 +748,18 @@ static PyObject * Composite_paint_texture_nearest_py(Composite * self, PyObject 
 // Linear version of above...
 void Composite_paint_texture_linear(Composite * this, int part, unsigned char * data, int y_dim, int x_dim, int y_stride, int x_stride, int inc_alpha)
 {
- int y, x, i;
- for (y=0; y<this->height; y++)
+ int use_active = (part==this->active_part);
+ size_t work_count = use_active ? this->active_count : (size_t)this->width * this->height;
+ long long work;
+
+ #pragma omp parallel for if(work_count > 65536) schedule(static)
+ for (work=0; work<(long long)work_count; work++)
  {
-  for (x=0; x<this->width; x++)
+  size_t pos = use_active ? this->active_pixels[work] : (size_t)work;
+  Pixel * targ = this->data[pos];
+  if ((targ!=NULL)&&(targ->part==part))
   {
-   Pixel * targ = this->data[y*this->width + x];
-   if ((targ!=NULL)&&(targ->part==part))
-   {
+    int i;
     int sy = floor(targ->v);
     float ty = targ->v - sy;
     int ey = sy + 1;
@@ -614,7 +818,6 @@ void Composite_paint_texture_linear(Composite * this, int part, unsigned char * 
      targ->c.b *= pixel[0];
      //targ->c.a *= 1.0;
     }
-   }
   }
  }
 }
@@ -628,20 +831,20 @@ static PyObject * Composite_paint_texture_linear_py(Composite * self, PyObject *
   if (!PyArg_ParseTuple(args, "O!|i", &PyArray_Type, &image, &part)) return NULL;
   
  // Some error checking...
-  if (image->nd!=3)
+  if (PyArray_NDIM(image)!=3)
   {
    PyErr_SetString(PyExc_TypeError, "Image numpy array must have 3 dimensions - height, width then colour channels.");
    return NULL;
   }
   
-  if (image->descr->kind!='u' || image->descr->elsize!=sizeof(char))
+  if (PyArray_TYPE(image)!=NPY_UINT8)
   {
    PyErr_SetString(PyExc_TypeError, "Image must be made of uint8.");
    return NULL;
   }
   
  // Do the work...
-  Composite_paint_texture_linear(self, part, (unsigned char*)(void*)image->data, image->dimensions[0], image->dimensions[1], image->strides[0], image->strides[1], (image->dimensions[2]>3) ? 1 : 0);
+  Composite_paint_texture_linear(self, part, (unsigned char*)PyArray_DATA(image), PyArray_DIM(image, 0), PyArray_DIM(image, 1), PyArray_STRIDE(image, 0), PyArray_STRIDE(image, 1), (PyArray_DIM(image, 2)>3) ? 1 : 0);
   
  // Return None...
   Py_INCREF(Py_None);
@@ -654,15 +857,16 @@ static PyObject * Composite_paint_texture_linear_py(Composite * self, PyObject *
 float Composite_cost_texture_nearest(Composite * this, int part, unsigned char * data, int y_dim, int x_dim, int y_stride, int x_stride, int inc_alpha)
 {
  float ret = 0.0;
- int y, x;
- 
- for (y=0; y<this->height; y++)
+ int use_active = (part==this->active_part);
+ size_t work_count = use_active ? this->active_count : (size_t)this->width * this->height;
+ size_t work;
+
+ for (work=0; work<work_count; work++)
  {
-  for (x=0; x<this->width; x++)
+  size_t pos = use_active ? this->active_pixels[work] : work;
+  Pixel * targ = this->data[pos];
+  if ((targ!=NULL)&&(targ->part==part))
   {
-   Pixel * targ = this->data[y*this->width + x];
-   if ((targ!=NULL)&&(targ->part==part))
-   {
     // Calculate the pixel to use...
      int sy = floor(targ->v+0.5);
      if (sy<0) sy = 0;
@@ -713,10 +917,9 @@ float Composite_cost_texture_nearest(Composite * this, int part, unsigned char *
       }
     
     // Remove the pixel value - we don't want to use it again...
-     this->data[y*this->width + x] = targ->next;
+     this->data[pos] = targ->next;
      targ->next = this->new_pixel;
      this->new_pixel = targ;
-   }
   }
  }
  
@@ -732,20 +935,20 @@ static PyObject * Composite_cost_texture_nearest_py(Composite * self, PyObject *
   if (!PyArg_ParseTuple(args, "O!|i", &PyArray_Type, &image, &part)) return NULL;
   
  // Some error checking...
-  if (image->nd!=3)
+  if (PyArray_NDIM(image)!=3)
   {
    PyErr_SetString(PyExc_TypeError, "Image numpy array must have 3 dimensions - height, width then colour channels.");
    return NULL;
   }
   
-  if (image->descr->kind!='u' || image->descr->elsize!=sizeof(char))
+  if (PyArray_TYPE(image)!=NPY_UINT8)
   {
    PyErr_SetString(PyExc_TypeError, "Image must be made of uint8.");
    return NULL;
   }
   
  // Do the work...
-  float cost = Composite_cost_texture_nearest(self, part, (unsigned char*)(void*)image->data, image->dimensions[0], image->dimensions[1], image->strides[0], image->strides[1], (image->dimensions[2]>3) ? 1 : 0);
+  float cost = Composite_cost_texture_nearest(self, part, (unsigned char*)PyArray_DATA(image), PyArray_DIM(image, 0), PyArray_DIM(image, 1), PyArray_STRIDE(image, 0), PyArray_STRIDE(image, 1), (PyArray_DIM(image, 2)>3) ? 1 : 0);
   
  // Return the cost...
   return Py_BuildValue("f", cost);
@@ -756,18 +959,16 @@ static PyObject * Composite_cost_texture_nearest_py(Composite * self, PyObject *
 // Adds alpha multiplied by the given weight to each pixel in the image...
 void Composite_inc_weight_alpha(Composite * this, float weight)
 {
- int y, x;
- 
- for (y=0; y<this->height; y++)
+ long long pos;
+
+ #pragma omp parallel for if(((long long)this->width*this->height) > 65536) schedule(static)
+ for (pos=0; pos<(long long)this->width*this->height; pos++)
  {
-  for (x=0; x<this->width; x++)
+  Pixel * targ = this->data[pos];
+  while (targ!=NULL)
   {
-   Pixel * targ = this->data[y*this->width + x];
-   while (targ!=NULL)
-   {
-    targ->w += targ->c.a * weight;
-    targ = targ->next; 
-   }
+   targ->w += targ->c.a * weight;
+   targ = targ->next;
   }
  }
 }
@@ -791,17 +992,30 @@ static PyObject * Composite_inc_weight_alpha_py(Composite * self, PyObject * arg
 
 void Composite_draw_pair(Composite * this, int part1, int part2, float weight)
 {
+ if (part1==part2) return;
+ if ((part1<0)||(part2<0)) return;
+ if (((size_t)part1>=this->part_capacity)||((size_t)part2>=this->part_capacity)) return;
+ if ((this->part_bounds[part1].valid==0)||(this->part_bounds[part2].valid==0)) return;
+
+ PartBounds b1 = this->part_bounds[part1];
+ PartBounds b2 = this->part_bounds[part2];
+ int min_x = (b1.min_x<b2.min_x) ? b1.min_x : b2.min_x;
+ int max_x = (b1.max_x>b2.max_x) ? b1.max_x : b2.max_x;
+ int min_y = (b1.min_y<b2.min_y) ? b1.min_y : b2.min_y;
+ int max_y = (b1.max_y>b2.max_y) ? b1.max_y : b2.max_y;
+
  int y, x;
  
- for (y=0; y<this->height; y++)
+ for (y=min_y; y<=max_y; y++)
  {
-  for (x=0; x<this->width; x++)
+  for (x=min_x; x<=max_x; x++)
   {
+   size_t pos = (size_t)y*this->width + x;
    // Find out if it has either of the parts...
     int has1 = 0;
     int has2 = 0;
     
-    Pixel * targ = this->data[y*this->width + x];
+    Pixel * targ = this->data[pos];
     while (targ!=NULL)
     {
      if (targ->part==part1) has1 = 1;
@@ -816,8 +1030,8 @@ void Composite_draw_pair(Composite * this, int part1, int part2, float weight)
      if (has1==0)
      {
       Pixel * np = Composite_new_pixel(this);
-      np->next = targ;
-      this->data[y*this->width + x] = np;
+      np->next = this->data[pos];
+      this->data[pos] = np;
        
       np->c.r = 1.0;
       np->c.g = 1.0;
@@ -830,13 +1044,14 @@ void Composite_draw_pair(Composite * this, int part1, int part2, float weight)
       np->u = 0.0;
       np->v = 0.0;
       np->w = weight;
+      Composite_expand_bounds(this, part1, x, y);
      }
       
      if (has2==0)
      {
       Pixel * np = Composite_new_pixel(this);
-      np->next = targ;
-      this->data[y*this->width + x] = np;
+      np->next = this->data[pos];
+      this->data[pos] = np;
        
       np->c.r = 1.0;
       np->c.g = 1.0;
@@ -849,6 +1064,7 @@ void Composite_draw_pair(Composite * this, int part1, int part2, float weight)
       np->u = 0.0;
       np->v = 0.0;
       np->w = weight;
+      Composite_expand_bounds(this, part2, x, y);
      }
     }
   }
@@ -905,6 +1121,10 @@ struct EdgeState
 
 int Composite_maxflow_select(Composite * this, MaxFlowAPI * mf, float edge_bias, float smooth_bias)
 {
+ CompositeCrop crop;
+ int crop_result = Composite_crop_to_content(this, &crop);
+ if (crop_result<=0) return crop_result;
+
  // MaxFlow object, for fun and games...
   MaxFlow maxflow;
   mf->init(&maxflow, 32, 32); // Will almost certainly grow from these values, but good starting point.
@@ -912,10 +1132,26 @@ int Composite_maxflow_select(Composite * this, MaxFlowAPI * mf, float edge_bias,
  // Create a fun little data structure to allow us to quickly grow regions and find all pixels that we are considering... 
   int job_code = 0;
   int pixels = this->width * this->height;
-  PixelState * pstate = (PixelState*)malloc(pixels * sizeof(PixelState));
-  EdgeState  * estate =  (EdgeState*)malloc(pixels * 2 * sizeof(EdgeState));
+  size_t occupied = 0;
+  int occupied_i;
+  #pragma omp parallel for if(pixels > 65536) reduction(+:occupied) schedule(static)
+  for (occupied_i=0; occupied_i<pixels; occupied_i++)
+    if (this->data[occupied_i]!=NULL) occupied += 1;
+
+  PixelState * pstate = (PixelState*)malloc((size_t)pixels * sizeof(PixelState));
+  EdgeState  * estate =  (EdgeState*)malloc(occupied * 2 * sizeof(EdgeState));
+  if ((pstate==NULL)||(estate==NULL))
+  {
+   free(estate);
+   free(pstate);
+   mf->deinit(&maxflow);
+   Composite_restore_crop(this, &crop);
+   PyErr_NoMemory();
+   return -1;
+  }
   
   int i;
+  #pragma omp parallel for if(pixels > 65536) schedule(static)
   for (i=0; i<pixels; i++) pstate[i].job = -1;
  
  // Loop until all cases have been resolved...
@@ -1237,7 +1473,7 @@ int Composite_maxflow_select(Composite * this, MaxFlowAPI * mf, float edge_bias,
       targ->next = targ->next->next;
      }
      
-     dead = this->new_pixel;
+     dead->next = this->new_pixel;
      this->new_pixel = dead;
      
      targ = this->data[loc];
@@ -1263,6 +1499,7 @@ int Composite_maxflow_select(Composite * this, MaxFlowAPI * mf, float edge_bias,
   free(estate);
   free(pstate);
   mf->deinit(&maxflow);
+  Composite_restore_crop(this, &crop);
   
  return job_code;
 }
@@ -1286,6 +1523,7 @@ static PyObject * Composite_maxflow_select_py(Composite * self, PyObject * args)
  
  // Simply call through to the method...
   int solved = Composite_maxflow_select(self, maxflow, edge_bias, smooth_bias);
+  if ((solved<0)&&PyErr_Occurred()) return NULL;
  
  // Return how many mincut problems have been solved...
   return Py_BuildValue("i", solved);
@@ -1295,6 +1533,10 @@ static PyObject * Composite_maxflow_select_py(Composite * self, PyObject * args)
 
 int Composite_graphcut_select(Composite * this, MaxFlowAPI * mf, float edge_bias, float smooth_bias, float weight_bias)
 {
+ CompositeCrop crop;
+ int crop_result = Composite_crop_to_content(this, &crop);
+ if (crop_result<=0) return crop_result;
+
  // MaxFlow object, for fun and games...
   MaxFlow maxflow;
   mf->init(&maxflow, 32, 32); // Will almost certainly grow from these values, but good starting point.
@@ -1302,10 +1544,26 @@ int Composite_graphcut_select(Composite * this, MaxFlowAPI * mf, float edge_bias
  // Create a fun little data structure to allow us to quickly grow regions and find all pixels that we are considering... 
   int job_code = 0;
   int pixels = this->width * this->height;
-  PixelState * pstate = (PixelState*)malloc(pixels * sizeof(PixelState));
-  EdgeState  * estate =  (EdgeState*)malloc(pixels * 2 * sizeof(EdgeState));
+  size_t occupied = 0;
+  int occupied_i;
+  #pragma omp parallel for if(pixels > 65536) reduction(+:occupied) schedule(static)
+  for (occupied_i=0; occupied_i<pixels; occupied_i++)
+    if (this->data[occupied_i]!=NULL) occupied += 1;
+
+  PixelState * pstate = (PixelState*)malloc((size_t)pixels * sizeof(PixelState));
+  EdgeState  * estate =  (EdgeState*)malloc(occupied * 2 * sizeof(EdgeState));
+  if ((pstate==NULL)||(estate==NULL))
+  {
+   free(estate);
+   free(pstate);
+   mf->deinit(&maxflow);
+   Composite_restore_crop(this, &crop);
+   PyErr_NoMemory();
+   return -1;
+  }
   
   int i;
+  #pragma omp parallel for if(pixels > 65536) schedule(static)
   for (i=0; i<pixels; i++) pstate[i].job = -1;
  
  // Loop until all cases have been resolved...
@@ -1620,7 +1878,7 @@ int Composite_graphcut_select(Composite * this, MaxFlowAPI * mf, float edge_bias
       targ->next = targ->next->next;
      }
      
-     dead = this->new_pixel;
+     dead->next = this->new_pixel;
      this->new_pixel = dead;
      
      targ = this->data[loc];
@@ -1646,6 +1904,7 @@ int Composite_graphcut_select(Composite * this, MaxFlowAPI * mf, float edge_bias
   free(estate);
   free(pstate);
   mf->deinit(&maxflow);
+  Composite_restore_crop(this, &crop);
   
  return job_code;
 }
@@ -1671,6 +1930,7 @@ static PyObject * Composite_graphcut_select_py(Composite * self, PyObject * args
  
  // Simply call through to the method...
   int solved = Composite_graphcut_select(self, maxflow, edge_bias, smooth_bias, weight_bias);
+  if ((solved<0)&&PyErr_Occurred()) return NULL;
  
  // Return how many mincut problems have been solved...
   return Py_BuildValue("i", solved);
@@ -1681,18 +1941,17 @@ static PyObject * Composite_graphcut_select_py(Composite * self, PyObject * args
 // Given an image, as an unsigned char buffer of size 4*width*height this dumps the pixel values into it, as a,b,g,r, height major. Pixels with no values get assigned the background, of all the rest it takes the most recent colour written to the buffer...
 void Composite_render_last(Composite * this, unsigned char * out_image)
 {
- unsigned char * out = out_image;
- Pixel ** in = this->data;
- 
- int y, x;
- for (y=0; y<this->height; y++)
+ long long pos;
+
+ #pragma omp parallel for if(((long long)this->width*this->height) > 65536) schedule(static)
+ for (pos=0; pos<(long long)this->width*this->height; pos++)
  {
-  for (x=0; x<this->width; x++)
-  {
+   unsigned char * out = out_image + 4*pos;
+   Pixel * in = this->data[pos];
    // Calculate the colour...
     float r, g, b, a;
     
-    if (*in==NULL)
+    if (in==NULL)
     {
      r = this->bg.r;
      g = this->bg.g;
@@ -1701,10 +1960,10 @@ void Composite_render_last(Composite * this, unsigned char * out_image)
     }
     else
     {
-     r = (*in)->c.r;
-     g = (*in)->c.g;
-     b = (*in)->c.b;
-     a = (*in)->c.a;
+     r = in->c.r;
+     g = in->c.g;
+     b = in->c.b;
+     a = in->c.a;
     }
    
    // Clamp them...
@@ -1723,10 +1982,6 @@ void Composite_render_last(Composite * this, unsigned char * out_image)
     out[2] = (unsigned char)floor(a*r*255.0+0.5);
     out[3] = (unsigned char)floor(a*255.0+0.5);
     
-   // Move to the next position...
-    out += 4;
-    in += 1;
-  }
  }
 }
 
@@ -1742,7 +1997,7 @@ static PyObject * Composite_render_last_py(Composite * self, PyObject * args)
   PyObject * ret = PyArray_SimpleNew(3, dims, NPY_UINT8);
  
  // Fill it in...
-  Composite_render_last(self, (unsigned char*)PyArray_DATA(ret));
+  Composite_render_last(self, (unsigned char*)PyArray_DATA((PyArrayObject*)ret));
  
  // Return it...
   return ret;
@@ -1753,18 +2008,17 @@ static PyObject * Composite_render_last_py(Composite * self, PyObject * args)
 // Given an image, as an unsigned char buffer of size 4*width*height this dumps the pixel values into it, as a,b,g,r, height major. Pixels with no values get assigned the background, those with 1 value get that value, those with multiple value are averaged using the weights...
 void Composite_render_average(Composite * this, unsigned char * out_image)
 {
- unsigned char * out = out_image;
- Pixel ** in = this->data;
- 
- int y, x;
- for (y=0; y<this->height; y++)
+ long long pos;
+
+ #pragma omp parallel for if(((long long)this->width*this->height) > 65536) schedule(static)
+ for (pos=0; pos<(long long)this->width*this->height; pos++)
  {
-  for (x=0; x<this->width; x++)
-  {
+   unsigned char * out = out_image + 4*pos;
+   Pixel * in = this->data[pos];
    // Calculate the colour...
     float r, g, b, a;
     
-    if (*in==NULL)
+    if (in==NULL)
     {
      r = this->bg.r;
      g = this->bg.g;
@@ -1780,7 +2034,7 @@ void Composite_render_average(Composite * this, unsigned char * out_image)
      
      float w = 0.0;
      
-     Pixel * targ = *in;
+     Pixel * targ = in;
      while (targ!=NULL)
      {
       w += targ->w;
@@ -1810,10 +2064,6 @@ void Composite_render_average(Composite * this, unsigned char * out_image)
     out[2] = (unsigned char)floor(a*r*255.0+0.5);
     out[3] = (unsigned char)floor(a*255.0+0.5);
     
-   // Move to the next position...
-    out += 4;
-    in += 1;
-  }
  }
 }
 
@@ -1829,7 +2079,7 @@ static PyObject * Composite_render_average_py(Composite * self, PyObject * args)
   PyObject * ret = PyArray_SimpleNew(3, dims, NPY_UINT8);
  
  // Fill it in...
-  Composite_render_average(self, (unsigned char*)PyArray_DATA(ret));
+  Composite_render_average(self, (unsigned char*)PyArray_DATA((PyArrayObject*)ret));
  
  // Return it...
   return ret;
@@ -1875,45 +2125,15 @@ static PyMethodDef Composite_methods[] =
 
 static PyTypeObject CompositeType =
 {
- PyObject_HEAD_INIT(NULL)
- 0,                                /*ob_size*/
- "composite_c.Composite",          /*tp_name*/
- sizeof(Composite),                /*tp_basicsize*/
- 0,                                /*tp_itemsize*/
- (destructor)Composite_dealloc_py, /*tp_dealloc*/
- 0,                                /*tp_print*/
- 0,                                /*tp_getattr*/
- 0,                                /*tp_setattr*/
- 0,                                /*tp_compare*/
- 0,                                /*tp_repr*/
- 0,                                /*tp_as_number*/
- 0,                                /*tp_as_sequence*/
- 0,                                /*tp_as_mapping*/
- 0,                                /*tp_hash */
- 0,                                /*tp_call*/
- 0,                                /*tp_str*/
- 0,                                /*tp_getattro*/
- 0,                                /*tp_setattro*/
- 0,                                /*tp_as_buffer*/
- Py_TPFLAGS_DEFAULT,               /*tp_flags*/
- "Composites pixels from multiple sources together, in terms of parts that are added on one at a time. Designed specifically for combining glyphs together, as represented via LineGraph objects. Provides multiple algorithms to ultimatly combine the parts and obtain a smooth blend.", /* tp_doc */
- 0,                                /* tp_traverse */
- 0,                                /* tp_clear */
- 0,                                /* tp_richcompare */
- 0,                                /* tp_weaklistoffset */
- 0,                                /* tp_iter */
- 0,                                /* tp_iternext */
- Composite_methods,                /* tp_methods */
- Composite_members,                /* tp_members */
- 0,                                /* tp_getset */
- 0,                                /* tp_base */
- 0,                                /* tp_dict */
- 0,                                /* tp_descr_get */
- 0,                                /* tp_descr_set */
- 0,                                /* tp_dictoffset */
- 0,                                /* tp_init */
- 0,                                /* tp_alloc */
- Composite_new_py,                 /* tp_new */
+ PyVarObject_HEAD_INIT(NULL, 0)
+ .tp_name = "composite_c.Composite",
+ .tp_basicsize = sizeof(Composite),
+ .tp_dealloc = (destructor)Composite_dealloc_py,
+ .tp_flags = Py_TPFLAGS_DEFAULT,
+ .tp_doc = "Composites pixels from multiple sources together, in terms of parts that are added on one at a time. Designed specifically for combining glyphs together, as represented via LineGraph objects. Provides multiple algorithms to ultimatly combine the parts and obtain a smooth blend.",
+ .tp_methods = Composite_methods,
+ .tp_members = Composite_members,
+ .tp_new = Composite_new_py,
 };
 
 
@@ -1925,18 +2145,32 @@ static PyMethodDef composite_c_methods[] =
 
 
 
-#ifndef PyMODINIT_FUNC
-#define PyMODINIT_FUNC void
-#endif
-
-PyMODINIT_FUNC initcomposite_c(void)
+static struct PyModuleDef composite_c_module =
 {
- PyObject * mod = Py_InitModule3("composite_c", composite_c_methods, "Provides the ability to composite together multiple entites - primarily designed for merging together letters represented by LineGraph objects.");
- 
+ PyModuleDef_HEAD_INIT,
+ "composite_c",
+ "Provides the ability to composite together multiple entities - primarily designed for merging together letters represented by LineGraph objects.",
+ -1,
+ composite_c_methods
+};
+
+
+PyMODINIT_FUNC PyInit_composite_c(void)
+{
  import_array();
- 
- if (PyType_Ready(&CompositeType) < 0) return;
- 
+
+ if (PyType_Ready(&CompositeType) < 0) return NULL;
+
+ PyObject * mod = PyModule_Create(&composite_c_module);
+ if (mod==NULL) return NULL;
+
  Py_INCREF(&CompositeType);
- PyModule_AddObject(mod, "Composite", (PyObject*)&CompositeType);
+ if (PyModule_AddObject(mod, "Composite", (PyObject*)&CompositeType)!=0)
+ {
+  Py_DECREF(&CompositeType);
+  Py_DECREF(mod);
+  return NULL;
+ }
+
+ return mod;
 }

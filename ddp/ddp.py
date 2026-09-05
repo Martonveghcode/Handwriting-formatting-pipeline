@@ -9,7 +9,7 @@
 
 
 # Compile the code if need be...
-from utils.make import make_mod
+from .utils.make import make_mod
 import os.path
 
 make_mod('ddp_c', os.path.dirname(__file__), ['ddp_c.h', 'ddp_c.c'], numpy=True)
@@ -17,4 +17,4 @@ make_mod('ddp_c', os.path.dirname(__file__), ['ddp_c.h', 'ddp_c.c'], numpy=True)
 
 
 # Import the compiled module into this space, so we can pretend they are one and the same, just with automatic compilation...
-from ddp_c import DDP
+from .ddp_c import DDP

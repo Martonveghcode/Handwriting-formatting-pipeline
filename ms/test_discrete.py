@@ -11,7 +11,7 @@
 import random
 import numpy
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -31,11 +31,11 @@ ms.set_spatial('kd_tree')
 
 # Iterate and calculate the probability at a bunch of points, then plot...
 sam = numpy.arange(-2.5, 2.5, 0.1)
-prob = numpy.array(map(lambda v: ms.prob(numpy.array([v])), sam))
+prob = numpy.array([ms.prob(numpy.array([v])) for v in sam])
 
-print 'Distribution:'
+print('Distribution:')
 for threshold in numpy.arange(prob.max(), 0.0, -prob.max()/10.0):
-  print ''.join(map(lambda p: '|' if p>threshold else ' ', prob))
+  print(''.join(['|' if p>threshold else ' ' for p in prob]))
 
 
 
@@ -46,11 +46,11 @@ ms2.set_kernel('discrete')
 ms2.set_spatial('kd_tree')
 
 sam = numpy.arange(-2.5, 2.5, 0.1)
-prob = numpy.array(map(lambda v: ms2.prob(numpy.array([v])), sam))
+prob = numpy.array([ms2.prob(numpy.array([v])) for v in sam])
 
-print 'Distribution of draw:'
+print('Distribution of draw:')
 for threshold in numpy.arange(prob.max(), 0.0, -prob.max()/10.0):
-  print ''.join(map(lambda p: '|' if p>threshold else ' ', prob))
+  print(''.join(['|' if p>threshold else ' ' for p in prob]))
 
 
 
@@ -64,11 +64,11 @@ ms3.set_kernel('discrete')
 ms3.set_spatial('kd_tree')
 
 sam = numpy.arange(-2.5, 2.5, 0.1)
-prob = numpy.array(map(lambda v: ms3.prob(numpy.array([v])), sam))
+prob = numpy.array([ms3.prob(numpy.array([v])) for v in sam])
 
-print 'Distribution to multiply first with:'
+print('Distribution to multiply first with:')
 for threshold in numpy.arange(prob.max(), 0.0, -prob.max()/10.0):
-  print ''.join(map(lambda p: '|' if p>threshold else ' ', prob))
+  print(''.join(['|' if p>threshold else ' ' for p in prob]))
 
 
  
@@ -82,8 +82,8 @@ ms4.set_kernel('discrete')
 ms4.set_spatial('kd_tree')
 
 sam = numpy.arange(-2.5, 2.5, 0.1)
-prob = numpy.array(map(lambda v: ms4.prob(numpy.array([v])), sam))
+prob = numpy.array([ms4.prob(numpy.array([v])) for v in sam])
 
-print 'Distribution of multiplication (expected to be wrong!):'
+print('Distribution of multiplication (expected to be wrong!):')
 for threshold in numpy.arange(prob.max(), 0.0, -prob.max()/10.0):
-  print ''.join(map(lambda p: '|' if p>threshold else ' ', prob))
+  print(''.join(['|' if p>threshold else ' ' for p in prob]))

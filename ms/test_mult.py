@@ -15,10 +15,10 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -26,11 +26,11 @@ from ms import MeanShift
 size = (128, 128)
 pmap = []
 
-for _ in xrange(4):
+for _ in range(4):
   level = numpy.random.gamma(0.1, 80.0, size=size)
   
   steps = 32
-  for s in xrange(steps):
+  for s in range(steps):
     scale = level.copy()
     scale[1:,:] += level[:-1,:]
     scale[:-1,:] += level[1:,:]
@@ -80,13 +80,13 @@ cv.SaveImage('mult_input_mult.png', img)
 draw = 1024
 samples = []
 
-for i in xrange(4):
+for i in range(4):
   sam = numpy.random.multinomial(draw, pmap[i].ravel())
   sam = numpy.repeat(numpy.arange(sam.shape[0]), sam)
   sam = numpy.unravel_index(sam, pmap[i].shape)
-  sam = np.concatenate(map(lambda a: a.reshape((-1,1)), sam), axis=1)
+  sam = np.concatenate([a.reshape((-1,1)) for a in sam], axis=1)
   
-  sam = sam.astype(numpy.float)
+  sam = sam.astype(float)
   sam[:,0] += numpy.random.normal(scale=0.5, size=sam.shape[0])
   sam[:,1] += numpy.random.normal(scale=0.5, size=sam.shape[0])
   
@@ -98,7 +98,7 @@ for i in xrange(4):
 imgs = []
 
 draw_scale = 4
-for i in xrange(4):
+for i in range(4):
   img = numpy.zeros((draw_scale*size[0], draw_scale*size[1]), dtype=numpy.float32)
   
   for pos in samples[i]:
@@ -126,7 +126,7 @@ cv.SaveImage('mult_input_draw.png', img)
 kernels = ['gaussian', 'uniform', 'triangular', 'epanechnikov', 'cosine', 'cauchy', 'logistic']
 
 for kernel in kernels:
-  print 'Processing', kernel
+  print('Processing', kernel)
   # Create the four MeanShift objects...
   def to_ms(data):
     ms = MeanShift()
@@ -136,19 +136,19 @@ for kernel in kernels:
     ms.quality = 1.0
     return ms
   
-  ms = map(to_ms, samples)
+  ms = list(map(to_ms, samples))
 
   # Infer a good loo value for the first one, then set them all to the same...
   p = ProgBar()
   ms[0].scale_loo_nll(callback=p.callback)
   del p
   
-  for i in xrange(1,4): ms[i].copy_scale(ms[0])
+  for i in range(1,4): ms[i].copy_scale(ms[0])
 
   # Visualise the distributions using KDE...
   imgs = []
   p = ProgBar()
-  for i in xrange(4):
+  for i in range(4):
     p.callback(i, 4)
     img = numpy.zeros((draw_scale*size[0], draw_scale*size[1]), dtype=numpy.float32)
     
@@ -183,7 +183,7 @@ for kernel in kernels:
   # Multiply them togther properly...
   p = ProgBar()
   output = numpy.empty((draw, 2), dtype=numpy.float32)
-  for i in xrange(draw):
+  for i in range(draw):
     p.callback(i, draw)
     MeanShift.mult(ms, output[i,:].reshape((1,-1)), fake=2)
   del p

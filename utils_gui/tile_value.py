@@ -18,7 +18,7 @@ from collections import OrderedDict
 import cairo
 from gi.repository import Gdk, GdkPixbuf
 
-from viewport_layer import *
+from .viewport_layer import *
 
 
 
@@ -61,7 +61,7 @@ class TileValue(Layer):
     
     # For each value create an alpha mask...
     self.values = []
-    for i in xrange(values.max()+1):
+    for i in range(values.max()+1):
       # Create a mask for this layer...
       mask[:,:] = 0
       mask[numpy.nonzero(values==i)] = 255

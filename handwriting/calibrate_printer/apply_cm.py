@@ -122,7 +122,7 @@ data = image.reshape((-1, 3))
 ## Compress the data matrix down, to remove duplicates...
 index = numpy.lexsort(data.T)
 data = data[index,:]
-keep = numpy.ones(data.shape[0], dtype=numpy.bool)
+keep = numpy.ones(data.shape[0], dtype=bool)
 keep[1:] = (numpy.diff(data, axis=0)!=0).any(axis=1)
 data = data[keep]
 
@@ -161,7 +161,7 @@ out = out.reshape(image.shape)
 # Clamp unreasonable values, record where clamping occurs...
 if not args.quiet:
   print 'Clamping...'
-mask = numpy.zeros((out.shape[0], out.shape[1]), dtype=numpy.bool)
+mask = numpy.zeros((out.shape[0], out.shape[1]), dtype=bool)
 
 low = out < 0.0
 out[low] = 0.0

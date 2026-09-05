@@ -124,10 +124,10 @@ class Spacing:
     if entry[0]==id(left): w *= self.match_id
     if entry[4]==id(right): w *= self.match_id
     
-    l_char = filter(lambda c: c!='_', left.key)
-    r_char = filter(lambda c: c!='_', right.key)
-    le_char = filter(lambda c: c!='_', entry[1])
-    re_char = filter(lambda c: c!='_', entry[3])
+    l_char = ''.join(c for c in left.key if c!='_')
+    r_char = ''.join(c for c in right.key if c!='_')
+    le_char = ''.join(c for c in entry[1] if c!='_')
+    re_char = ''.join(c for c in entry[3] if c!='_')
     
     if l_char==le_char: w *= self.match_char    
     if r_char==re_char: w *= self.match_char
@@ -170,8 +170,8 @@ class Spacing:
   def median(self, left, right):
     """Returns the weighted median of the dataset, where the weights have been adjusted for the provided glyph pair."""
     
-    values = map(lambda e: e[2], self.db)
-    weights = map(lambda e: self.__weight(e, left, right), self.db)
+    values = [e[2] for e in self.db]
+    weights = [self.__weight(e, left, right) for e in self.db]
     
     return self.__weighted_median(values, weights)
 
@@ -179,7 +179,7 @@ class Spacing:
   def draw(self, left, right, amount = 0.5):
     """Same as median, except it treats the values as defining a probability distribution, and draws from the middle amount (parameter) of the weight mass. Basically adds some noise, without the risk of sampling outliers."""
     
-    value = map(lambda e: e[2], self.db)
-    weight = map(lambda e: self.__weight(e, left, right), self.db)
+    value = [e[2] for e in self.db]
+    weight = [self.__weight(e, left, right) for e in self.db]
     
     return self.__weighted_draw(value, weight, amount)

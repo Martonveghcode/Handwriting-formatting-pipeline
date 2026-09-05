@@ -1,0 +1,50 @@
+HELIT modern rebuild
+====================
+
+Runtime
+-------
+- Ubuntu 24.04 / WSL2
+- Handwriting Synthesis Tool (HST): system Python 3.12
+- Line Extraction & Tagging (LET): isolated Python 3.9 environment in .venv-let
+  because LET's runtime code generation depends on scipy-weave.
+
+Backend changes
+---------------
+- Ported the Python and C-extension code paths used by HST and LET from
+  Python 2 to Python 3.
+- Reworked the compositor so drawing and texturing operate on active pixels
+  instead of scanning the entire page for every segment.
+- Replaced the compositor's page-sized pixel allocator blocks with bounded
+  65,536-pixel blocks.
+- Cropped graph-cut work to occupied content and sized edge storage from
+  occupied pixels.
+- Added OpenMP to page-sized independent loops, with a threshold that avoids
+  parallel overhead for small glyph operations.
+- Added persistent PLY parsing cache and a byte-limited LRU texture cache.
+- Avoided rebuilding the style KD-tree when its feature parameters did not
+  change.
+- Added phase timings and cache counters to synthesis output.
+
+Validated benchmark
+-------------------
+Synthetic 5411 x 5168 page, 12 sparse parts, same output checksum:
+
+                       Ubuntu 20.04 old    Ubuntu 24.04 rebuilt
+  Total compositor           1.695 s              0.190 s
+  Draw + paint               1.272 s              0.007 s
+  Final output               0.228 s              0.020 s
+  Peak RSS                    1625 MiB               362 MiB
+
+This is 8.9x faster end-to-end in the compositor benchmark, 181x faster for
+the repeated draw/paint bottleneck, 11x faster for final image output, and
+uses about 78 percent less peak memory. A golden compositor test matched the
+old implementation byte-for-byte.
+
+Commands
+--------
+  scripts/launch_synthesis.sh
+  scripts/launch_annotation.sh
+  scripts/verify_modern.sh [optional-line-graph] [optional-output-png]
+
+The installer is scripts/install_ubuntu24.sh. It is intended for a fresh
+Ubuntu 24.04 instance and installs/builds both applications.

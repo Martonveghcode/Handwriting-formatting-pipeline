@@ -17,7 +17,7 @@ import math
 from scipy.special import gammaln, psi, polygamma
 from scipy import weave
 
-from start_cpp import start_cpp
+from .start_cpp import start_cpp
 
 
 
@@ -132,21 +132,21 @@ class TestFuncs(unittest.TestCase):
     weave.inline(code, support_code=gamma_code)
 
   def test_error_lngamma(self):
-    for _ in xrange(1000):
+    for _ in range(1000):
       z = random.uniform(0.01, 100.0)
       own = lnGamma(z)
       good = gammaln(z)
       assert(math.fabs(own-good)<1e-12)
 
   def test_error_digamma(self):
-    for _ in xrange(1000):
+    for _ in range(1000):
       z = random.uniform(0.01, 100.0)
       own = digamma(z)
       good = psi(z)
       assert(math.fabs(own-good)<1e-9)
 
   def test_error_trigamma(self):
-    for _ in xrange(1000):
+    for _ in range(1000):
       z = random.uniform(0.01, 100.0)
       own = trigamma(z)
       good = polygamma(1,z)

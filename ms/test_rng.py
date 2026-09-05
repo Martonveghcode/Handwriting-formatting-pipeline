@@ -11,52 +11,52 @@
 import random
 import numpy
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
 # Create a dataset - draws from a Gaussian...
-data = numpy.array(map(lambda _: random.normalvariate(0.0, 2.0), xrange(1000)))
+data = numpy.array([random.normalvariate(0.0, 2.0) for _ in range(1000)])
 
 
 
 # Setup three mean shift objects with the same data set and draw from them to demonstrate that you get the exact same output...
-print 'Should all be the same:'
-ms = map(lambda _: MeanShift(), xrange(3))
-for i in xrange(len(ms)):
+print('Should all be the same:')
+ms = [MeanShift() for _ in range(3)]
+for i in range(len(ms)):
   ms[i].set_data(data, 'd')
   ms[i].set_kernel('gaussian')
   ms[i].set_spatial('kd_tree')
   
-  print 'From', i, '|', ms[i].draw()
-print
+  print('From', i, '|', ms[i].draw())
+print()
 
 
 
 # Link the second to the first and draw again - first two should be different, third the same as the first...
 ms[1].link_rng(ms[0])
 
-print '#2 different:'
-for i in xrange(len(ms)):
-  print 'From', i, '|', ms[i].draw()
-print
+print('#2 different:')
+for i in range(len(ms)):
+  print('From', i, '|', ms[i].draw())
+print()
 
 
 
 # Skip one for the third, so the same pattern should appear again...
 ms[2].draw()
 
-print '#2 different (again):'
-for i in xrange(len(ms)):
-  print 'From', i, '|', ms[i].draw()
-print
+print('#2 different (again):')
+for i in range(len(ms)):
+  print('From', i, '|', ms[i].draw())
+print()
 
 
 
 # Link them all, so they are all different...
 ms[2].link_rng(ms[1])
 
-print 'All different:'
-for i in xrange(len(ms)):
-  print 'From', i, '|', ms[i].draw()
-print
+print('All different:')
+for i in range(len(ms)):
+  print('From', i, '|', ms[i].draw())
+print()

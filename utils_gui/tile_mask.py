@@ -17,7 +17,7 @@ from collections import OrderedDict
 import cairo
 from gi.repository import Gdk, GdkPixbuf
 
-from viewport_layer import *
+from .viewport_layer import *
 
 
 
@@ -43,7 +43,7 @@ class TileMask(Layer):
     """Replaces the current mask with a new one."""
     # Default mask for if None is provided...
     if mask is None:
-      mask = numpy.ones((480, 640), dtype=numpy.bool)
+      mask = numpy.ones((480, 640), dtype=bool)
     
     # Munge the data into a surface...
     mask = mask.astype(numpy.uint8)

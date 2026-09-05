@@ -13,9 +13,9 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
+from .utils.cvarray import *
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -27,7 +27,7 @@ from ms import MeanShift
 data = []
 samples = 512
 
-for ex_dim in xrange(3):
+for ex_dim in range(3):
   theta = 2.0 * numpy.pi * numpy.random.random(samples)
   deflection = 0.1 * numpy.random.random(samples) - 0.05
   
@@ -61,7 +61,7 @@ width = int(2.0 * numpy.pi * scale)
 
 
 # Visualise the samples on a mercator projection...
-print 'Samples...'
+print('Samples...')
 
 image = numpy.zeros((height, width, 3), dtype=numpy.float32)
 for vec in data:
@@ -80,7 +80,7 @@ cv.SaveImage('fisher_mercator_input.png', image)
 
 
 # Make a mercator projection probability map, save it out...
-print 'KDE...'
+print('KDE...')
 ## Locations to sample...
 x_to_nx = numpy.cos(numpy.linspace(0.0, 2.0 * numpy.pi, width, False))
 x_to_ny = numpy.sin(numpy.linspace(0.0, 2.0 * numpy.pi, width, False))
@@ -104,7 +104,7 @@ cv.SaveImage('fisher_mercator_kde.png', image)
 
 
 # Draw a new set of samples; visualise them...
-print 'Draw...'
+print('Draw...')
 
 draw = ms.draws(8*1024)
 
@@ -120,7 +120,7 @@ for vec in draw:
   try:
     image[y,x,:] = 255.0
   except:
-    print 'Bad draw:', vec
+    print('Bad draw:', vec)
 
 image = array2cv(image)
 cv.SaveImage('fisher_mercator_draw.png', image)
@@ -128,7 +128,7 @@ cv.SaveImage('fisher_mercator_draw.png', image)
 
 
 # Do mean shift on it, output a colour coded set of regions, same projection...
-print 'MS...'
+print('MS...')
 ## Actual work...
 ms.merge_range = 0.1
 modes, indices = ms.cluster()
@@ -138,7 +138,7 @@ clusters = ms.assign_clusters(block.reshape(-1,3))
 clusters = clusters.reshape((height, width))
 image = numpy.zeros((height, width, 3), dtype=numpy.float32)
 
-for i in xrange(clusters.max()+1):
+for i in range(clusters.max()+1):
   colour = numpy.random.random(3)
   image[clusters==i,:] = colour.reshape((1,3))
 
@@ -149,18 +149,18 @@ cv.SaveImage('fisher_mercator_ms.png', image)
 
 
 # Print out a memory analysis...
-print
-print 'Memory breakdown:'
+print()
+print('Memory breakdown:')
 mem = ms.memory()
 
-for key, value in mem.iteritems():
+for key, value in mem.items():
   if key=='kernel_ref_count' or key=='total':
     continue
   
   if key=='kernel':
-    print '  %s: %i bytes (ref count = %i)' % (key, value, mem['kernel_ref_count'])
+    print('  %s: %i bytes (ref count = %i)' % (key, value, mem['kernel_ref_count']))
   else:
-    print '  %s: %i bytes' % (key, value)
+    print('  %s: %i bytes' % (key, value))
 
-print 'total = %i bytes' % mem['total']
-print
+print('total = %i bytes' % mem['total'])
+print()

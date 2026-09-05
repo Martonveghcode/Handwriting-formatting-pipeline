@@ -12,7 +12,7 @@ from collections import OrderedDict
 import cairo
 from gi.repository import Gdk, GdkPixbuf
 
-from utils_gui.viewport_layer import *
+from .utils_gui.viewport_layer import *
 
 
 
@@ -117,7 +117,7 @@ class LineLayer(Layer):
       rby = by / scale
       rsize = self.tile_size / scale
       for es in self.line.within(rbx, rbx + rsize, rby, rby + rsize):
-        for ei in xrange(*es.indices(self.line.edge_count)):
+        for ei in range(*es.indices(self.line.edge_count)):
           edge = self.line.get_edge(ei)
           vf = self.line.get_vertex(edge[0])
           vt = self.line.get_vertex(edge[1])

@@ -10,11 +10,11 @@
 
 
 
-import frf
+from . import frf
 from sklearn.ensemble import RandomForestClassifier
 
 import numpy
-from utils.prog_bar import ProgBar
+from .utils.prog_bar import ProgBar
 
 
 
@@ -78,7 +78,7 @@ attributes = [Style, Content, Clothes]
 
 # Functions to generate examples of the three classes...
 def make_politician():
-  length = sum(map(lambda a: a.length, attributes))
+  length = sum([a.length for a in attributes])
   ret = numpy.empty(length, dtype=numpy.float32)
 
   offset = 0
@@ -89,7 +89,7 @@ def make_politician():
   return ret
 
 def make_marketing():
-  length = sum(map(lambda a: a.length, attributes))
+  length = sum([a.length for a in attributes])
   ret = numpy.empty(length, dtype=numpy.float32)
 
   offset = 0
@@ -100,7 +100,7 @@ def make_marketing():
   return ret
 
 def make_tele_sales():
-  length = sum(map(lambda a: a.length, attributes))
+  length = sum([a.length for a in attributes])
   ret = numpy.empty(length, dtype=numpy.float32)
 
   offset = 0
@@ -118,11 +118,11 @@ marketing_count = 2048
 tele_sales_count = 2048
 total_count = politician_count + marketing_count + tele_sales_count
 
-feat_length = sum(map(lambda a: a.length, attributes))
+feat_length = sum([a.length for a in attributes])
 dm = numpy.empty((total_count, feat_length), dtype=numpy.float32)
 cat = numpy.empty(total_count, dtype=numpy.int32)
 
-for i in xrange(total_count):
+for i in range(total_count):
   if i<politician_count:
     dm[i,:] = make_politician()
     cat[i] = 0
@@ -145,10 +145,10 @@ pb = ProgBar()
 oob = forest.train(dm, cat, 64, pb.callback)
 del pb
 
-print 'Made frf forest (oob = %.2f%%):' % ((1.0 - oob[0]) * 100.0)
-for i in xrange(min(len(forest),4)):
-  print '  Tree %i: %i bytes, %i nodes' % (i, forest[i].size, forest[i].nodes())
-print
+print('Made frf forest (oob = %.2f%%):' % ((1.0 - oob[0]) * 100.0))
+for i in range(min(len(forest),4)):
+  print('  Tree %i: %i bytes, %i nodes' % (i, forest[i].size, forest[i].nodes()))
+print()
 
 
 
@@ -159,16 +159,16 @@ pb = ProgBar()
 model.fit(dm, cat)
 del pb
 
-print 'Made scikit learn forest (oob = %.2f%%):' % (model.oob_score_ * 100.0)
-for i in xrange(min(len(model.estimators_),4)):
-  print '  Tree %i: %i nodes' % (i, model.estimators_[i].tree_.feature.shape[0])
-print
+print('Made scikit learn forest (oob = %.2f%%):' % (model.oob_score_ * 100.0))
+for i in range(min(len(model.estimators_),4)):
+  print('  Tree %i: %i nodes' % (i, model.estimators_[i].tree_.feature.shape[0]))
+print()
 
 
 
 # Test...
 data = numpy.empty((256, dm.shape[1]))
-for i in xrange(data.shape[0]):
+for i in range(data.shape[0]):
   data[i,:] = make_politician()
 
 res_frf = forest.predict(data)[0]
@@ -176,14 +176,14 @@ correct_frf = (numpy.argmax(res_frf['prob'], axis=1)==0).sum()
 
 correct_scikit = (model.predict(data)==0).sum()
 
-print 'Of %i politicians:' % data.shape[0]
-print '    frf: %i (%.1f%%) were correctly detected.'%(correct_frf, 100.0*correct_frf/float(data.shape[0]))
-print '    scikit: %i (%.1f%%) were correctly detected.'%(correct_scikit, 100.0*correct_scikit/float(data.shape[0]))
-print
+print('Of %i politicians:' % data.shape[0])
+print('    frf: %i (%.1f%%) were correctly detected.'%(correct_frf, 100.0*correct_frf/float(data.shape[0])))
+print('    scikit: %i (%.1f%%) were correctly detected.'%(correct_scikit, 100.0*correct_scikit/float(data.shape[0])))
+print()
 
 
 data = numpy.empty((256, dm.shape[1]))
-for i in xrange(data.shape[0]):
+for i in range(data.shape[0]):
   data[i,:] = make_marketing()
 
 res_frf = forest.predict(data)[0]
@@ -191,14 +191,14 @@ correct_frf = (numpy.argmax(res_frf['prob'], axis=1)==1).sum()
 
 correct_scikit = (model.predict(data)==1).sum()
 
-print 'Of %i marketers:' % data.shape[0]
-print '    frf: %i (%.1f%%) were correctly detected.'%(correct_frf, 100.0*correct_frf/float(data.shape[0]))
-print '    scikit: %i (%.1f%%) were correctly detected.'%(correct_scikit, 100.0*correct_scikit/float(data.shape[0]))
-print
+print('Of %i marketers:' % data.shape[0])
+print('    frf: %i (%.1f%%) were correctly detected.'%(correct_frf, 100.0*correct_frf/float(data.shape[0])))
+print('    scikit: %i (%.1f%%) were correctly detected.'%(correct_scikit, 100.0*correct_scikit/float(data.shape[0])))
+print()
 
 
 data = numpy.empty((256, dm.shape[1]))
-for i in xrange(data.shape[0]):
+for i in range(data.shape[0]):
   data[i,:] = make_tele_sales()
 
 res_frf = forest.predict(data)[0]
@@ -206,7 +206,7 @@ correct_frf = (numpy.argmax(res_frf['prob'], axis=1)==2).sum()
 
 correct_scikit = (model.predict(data)==2).sum()
 
-print 'Of %i tele-sellers:' % data.shape[0]
-print '    frf: %i (%.1f%%) were correctly detected.'%(correct_frf, 100.0*correct_frf/float(data.shape[0]))
-print '    scikit: %i (%.1f%%) were correctly detected.'%(correct_scikit, 100.0*correct_scikit/float(data.shape[0]))
-print
+print('Of %i tele-sellers:' % data.shape[0])
+print('    frf: %i (%.1f%%) were correctly detected.'%(correct_frf, 100.0*correct_frf/float(data.shape[0])))
+print('    scikit: %i (%.1f%%) were correctly detected.'%(correct_scikit, 100.0*correct_scikit/float(data.shape[0])))
+print()

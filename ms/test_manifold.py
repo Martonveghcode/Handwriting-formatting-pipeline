@@ -12,9 +12,9 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
+from .utils.cvarray import *
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -39,7 +39,7 @@ ms.set_spatial('kd_tree')
 
 # Loop the circle; project points to it...
 steps = 16
-for i in xrange(steps):
+for i in range(steps):
   angle = 2.0 * numpy.pi * float(i) / float(steps)
   rad = 3.0 + (numpy.random.beta(2.0, 2.0)-0.5)
   
@@ -48,26 +48,26 @@ for i in xrange(steps):
   
   proj = ms.manifold(numpy.array([x,y]),1)
   
-  print '(%.3f,%.3f) -> (%.3f,%.3f) | rad: %.3f -> %.3f' % (x, y, proj[0], proj[1], numpy.sqrt(x*x+y*y), numpy.sqrt(numpy.square(proj).sum()))
-print
+  print('(%.3f,%.3f) -> (%.3f,%.3f) | rad: %.3f -> %.3f' % (x, y, proj[0], proj[1], numpy.sqrt(x*x+y*y), numpy.sqrt(numpy.square(proj).sum())))
+print()
 
 
 # Do some visualisation...
 dim = 512
 image = numpy.zeros((dim, dim, 3), dtype=numpy.float32)
 
-for r in xrange(data.shape[0]):
+for r in range(data.shape[0]):
   loc = data[r,:]
   loc = (loc + 4.0) / 8.0
   loc *= dim
   image[int(loc[1]+0.5), int(loc[0]+0.5), :] = 64.0
 
-print 'Projecting samples to line...'
+print('Projecting samples to line...')
 to_render = 1024
 line = ms.manifolds(data[:to_render], 1)
-print 'Done'
+print('Done')
 
-for r in xrange(line.shape[0]):
+for r in range(line.shape[0]):
   loc = line[r,:]
   loc = (loc + 4.0) / 8.0
   loc *= dim

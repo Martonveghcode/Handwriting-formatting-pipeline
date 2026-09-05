@@ -25,7 +25,7 @@ def start_cpp(hash_str = None):
     return '#line %i "%s"\n' % (info[1], info[0])
   else:
     h = hashlib.md5()
-    h.update(hash_str)
+    h.update(hash_str.encode('utf-8') if isinstance(hash_str, str) else hash_str)
     hash_val = h.hexdigest()
     return '#line %i "%s" // %s\n' % (info[1], info[0], hash_val)
 

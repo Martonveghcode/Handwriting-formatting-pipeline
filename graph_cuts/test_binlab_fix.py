@@ -8,11 +8,11 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from binary_label import BinaryLabel
+from .binary_label import BinaryLabel
 
 
 for fix in [None, (0,1,1), (3,2,-1)]:
-  print 'Fixing %s' % str(fix)
+  print('Fixing %s' % str(fix))
   
   bl = BinaryLabel((4,4))
 
@@ -39,9 +39,9 @@ for fix in [None, (0,1,1), (3,2,-1)]:
   assignment, cost = bl.solve()
 
 
-  for y in xrange(4):
-    print '  ',
-    for x in xrange(4):
-      print 'T ' if assignment[y,x] else 'F ',
-    print
-  print
+  for y in range(4):
+    print('  ', end=' ')
+    for x in range(4):
+      print('T ' if assignment[y,x] else 'F ', end=' ')
+    print()
+  print()

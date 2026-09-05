@@ -12,13 +12,13 @@
 
 
 
-from viewer import *
-from tile_image import *
-from tile_mask import *
-from tile_value import *
-from reticle_overlay import *
+from .viewer import *
+from .tile_image import *
+from .tile_mask import *
+from .tile_value import *
+from .reticle_overlay import *
 
-from utils import doc_gen
+from .utils import doc_gen
 
 
 

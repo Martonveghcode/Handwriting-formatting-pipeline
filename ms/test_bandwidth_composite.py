@@ -14,9 +14,9 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
+from .utils.cvarray import *
 
-from ms import MeanShift, MeanShiftCompositeScale
+from .ms import MeanShift, MeanShiftCompositeScale
 
 
 
@@ -31,7 +31,7 @@ mirror_len = 0.15 * (0.5 * size / scale)
 
 
 # Create a mean shift object with some data and a composite kernel - data is a position using radial coordinates followed by two angles; also using this for testing the conversion system...
-print 'a:'
+print('a:')
 
 direction = numpy.concatenate((numpy.random.normal(0.0, 0.1, samples//2), numpy.random.normal(numpy.pi, 1.0, samples//2)))
 radius = numpy.concatenate((numpy.random.normal(2.0, 0.5, samples//2), numpy.random.normal(2.0, 0.5, samples//4), numpy.random.normal(3.0, 0.5, samples//4)))
@@ -56,10 +56,10 @@ optimise_scale.add_param_kernel('cb')
 
 steps = optimise_scale(ms)
 
-print 'Optimisation of "a" took %i steps' % steps
-print 'kernel = %s' % ms.get_kernel()
-print 'scale = %s' % ms.get_scale()
-print
+print('Optimisation of "a" took %i steps' % steps)
+print('kernel = %s' % ms.get_kernel())
+print('scale = %s' % ms.get_scale())
+print()
 
 
 
@@ -84,7 +84,7 @@ def visualise(fn, data):
     except:
       pass
       
-    for i in xrange(angle_step):
+    for i in range(angle_step):
       t = float(i) / (angle_step-1)
       t_x = int(t * s_x + (1-t) * e_x)
       t_y = int(t * s_y + (1-t) * e_y)
@@ -94,7 +94,7 @@ def visualise(fn, data):
       except:
         pass
       
-    for i in xrange(angle_step):
+    for i in range(angle_step):
       t = float(i) / (angle_step-1)
       t_x = int(s_x + (1-t) * o_x)
       t_y = int(s_y + (1-t) * o_y)
@@ -104,7 +104,7 @@ def visualise(fn, data):
       except:
         pass
       
-    for i in xrange(angle_step):
+    for i in range(angle_step):
       t = float(i) / (angle_step-1)
       t_x = int(s_x - (1-t) * o_x)
       t_y = int(s_y - (1-t) * o_y)
@@ -125,14 +125,14 @@ visualise('bandwidth_a_draw.png', draw)
 
 
 # Change the data and reoptimise - data with a very different scale...
-print 'b:'
+print('b:')
 
 direction = []
 radius = []
 ang_a = []
 ang_b = []
 
-for i in xrange(8):
+for i in range(8):
   count = samples//8
   
   direction.append(numpy.random.normal(numpy.pi*2.0 * i / 8.0, 0.2, count))
@@ -151,10 +151,10 @@ data = numpy.concatenate((direction[:,numpy.newaxis], radius[:,numpy.newaxis], a
 ms.set_data(data, 'df', None, 'rAA')
 steps = optimise_scale(ms)
 
-print 'Optimisation of "b" took %i steps' % steps
-print 'kernel = %s' % ms.get_kernel()
-print 'scale = %s' % ms.get_scale()
-print
+print('Optimisation of "b" took %i steps' % steps)
+print('kernel = %s' % ms.get_kernel())
+print('scale = %s' % ms.get_scale())
+print()
 
 
 

@@ -848,7 +848,7 @@ static PyObject * DDP_new_py(PyTypeObject * type, PyObject * args, PyObject * kw
 static void DDP_dealloc_py(DDP * self)
 {
  DDP_dealloc(self);
- self->ob_type->tp_free((PyObject*)self);
+ Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 
@@ -1570,45 +1570,15 @@ static PyMethodDef DDP_methods[] =
 
 static PyTypeObject DDPType =
 {
- PyObject_HEAD_INIT(NULL)
- 0,                                /*ob_size*/
- "ddp_c.DDP",                      /*tp_name*/
- sizeof(DDP),                      /*tp_basicsize*/
- 0,                                /*tp_itemsize*/
- (destructor)DDP_dealloc_py,       /*tp_dealloc*/
- 0,                                /*tp_print*/
- 0,                                /*tp_getattr*/
- 0,                                /*tp_setattr*/
- 0,                                /*tp_compare*/
- 0,                                /*tp_repr*/
- 0,                                /*tp_as_number*/
- 0,                                /*tp_as_sequence*/
- 0,                                /*tp_as_mapping*/
- 0,                                /*tp_hash */
- 0,                                /*tp_call*/
- 0,                                /*tp_str*/
- 0,                                /*tp_getattro*/
- 0,                                /*tp_setattro*/
- 0,                                /*tp_as_buffer*/
- Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
- "An object for performing discrete dynamic programming - a fairly basic algorithm really. Supports multiple cost function forms however. Constructor takes no parameters; instead you call the prepare(...) method.", /* tp_doc */
- 0,                                /* tp_traverse */
- 0,                                /* tp_clear */
- 0,                                /* tp_richcompare */
- 0,                                /* tp_weaklistoffset */
- 0,                                /* tp_iter */
- 0,                                /* tp_iternext */
- DDP_methods,                      /* tp_methods */
- DDP_members,                      /* tp_members */
- 0,                                /* tp_getset */
- 0,                                /* tp_base */
- 0,                                /* tp_dict */
- 0,                                /* tp_descr_get */
- 0,                                /* tp_descr_set */
- 0,                                /* tp_dictoffset */
- 0,                                /* tp_init */
- 0,                                /* tp_alloc */
- DDP_new_py,                       /* tp_new */
+ PyVarObject_HEAD_INIT(NULL, 0)
+ .tp_name = "ddp_c.DDP",
+ .tp_basicsize = sizeof(DDP),
+ .tp_dealloc = (destructor)DDP_dealloc_py,
+ .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+ .tp_doc = "An object for performing discrete dynamic programming.",
+ .tp_methods = DDP_methods,
+ .tp_members = DDP_members,
+ .tp_new = DDP_new_py,
 };
 
 
@@ -1621,18 +1591,31 @@ static PyMethodDef ddp_c_methods[] =
 
 
 
-#ifndef PyMODINIT_FUNC
-#define PyMODINIT_FUNC void
-#endif
-
-PyMODINIT_FUNC initddp_c(void)
+static struct PyModuleDef ddp_c_module =
 {
- PyObject * mod = Py_InitModule3("ddp_c", ddp_c_methods, "Provides a fairly standard discrete dynamic programming implimentation, with good cost function specification.");
+ PyModuleDef_HEAD_INIT,
+ "ddp_c",
+ "Provides a fairly standard discrete dynamic programming implementation.",
+ -1,
+ ddp_c_methods
+};
+
+PyMODINIT_FUNC PyInit_ddp_c(void)
+{
+ PyObject * mod;
  
  import_array();
- 
- if (PyType_Ready(&DDPType) < 0) return;
+ if (PyType_Ready(&DDPType) < 0) return NULL;
+ mod = PyModule_Create(&ddp_c_module);
+ if (mod==NULL) return NULL;
  
  Py_INCREF(&DDPType);
- PyModule_AddObject(mod, "DDP", (PyObject*)&DDPType);
+ if (PyModule_AddObject(mod, "DDP", (PyObject*)&DDPType) < 0)
+ {
+  Py_DECREF(&DDPType);
+  Py_DECREF(mod);
+  return NULL;
+ }
+
+ return mod;
 }

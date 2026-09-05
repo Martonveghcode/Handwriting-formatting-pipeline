@@ -9,7 +9,7 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -60,9 +60,9 @@ for kernel in ['uniform', 'triangular', 'epanechnikov', 'cosine', 'gaussian', 'c
     kld = numpy.sum(numpy.log(p1/p2)) / samples
     
     # Print output to screen...
-    print 'Kernel = %s; Dims = %i | KL-divergance = %.6f' % (kernel, dim, kld)
+    print('Kernel = %s; Dims = %i | KL-divergance = %.6f' % (kernel, dim, kld))
   
-  print
+  print()
 
 
 
@@ -98,6 +98,6 @@ for kernel in ['fisher', 'mirror_fisher']:
       kld = numpy.sum(numpy.log(p1/p2)) / samples_dir
     
       # Print output to screen...
-      print 'Kernel = %s; Dims = %i | KL-divergance = %.6f' % (ms.get_kernel(), dim, kld)
+      print('Kernel = %s; Dims = %i | KL-divergance = %.6f' % (ms.get_kernel(), dim, kld))
   
-  print
+  print()

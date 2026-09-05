@@ -23,8 +23,8 @@ from collections import defaultdict
 
 import costs
 
-from ply2 import ply2
 from line_graph.line_graph import LineGraph
+from ply2_cache import read as read_ply2
 
 
 
@@ -40,7 +40,7 @@ def gen_bias(lg, hg):
   ls_lg.transform(ihg, True)
   
   # Add weight from all of the line segments...
-  for ei in xrange(ls_lg.edge_count):
+  for ei in range(ls_lg.edge_count):
     edge = ls_lg.get_edge(ei)
     
     vf = ls_lg.get_vertex(edge[0])
@@ -57,7 +57,7 @@ def gen_bias(lg, hg):
   # Normalise and return...
   maximum = max(bias.values())
   
-  for key in bias.keys():
+  for key in list(bias.keys()):
     bias[key] /= maximum
   
   return bias
@@ -100,7 +100,7 @@ class Glyph:
       line = 0
     
       start = int(numpy.trunc(min_y))
-      for pl in xrange(start, int(numpy.ceil(max_y))):
+      for pl in range(start, int(numpy.ceil(max_y))):
         mass = 0.0
         low_y = float(pl) - extra
         high_y = float(pl+1) + extra
@@ -109,7 +109,7 @@ class Glyph:
         right_x = None
       
         for es in self.lg.within(min_x, max_x, low_y, high_y):
-          for ei in xrange(*es.indices(self.lg.edge_count)):
+          for ei in range(*es.indices(self.lg.edge_count)):
             edge = self.lg.get_edge(ei)
             vf = self.lg.get_vertex(edge[0])
             vt = self.lg.get_vertex(edge[1])
@@ -157,7 +157,7 @@ class Glyph:
     
     # Extract the character this glyph represents...
     tags = self.lg.get_tags()
-    codes = [t[0] for t in tags if len(filter(lambda c: c!='_', t[0]))==1]
+    codes = [t[0] for t in tags if len([c for c in t[0] if c!='_'])==1]
     self.key = codes[0] if len(codes)!=0 else None
     
     self.code = -id(self)
@@ -194,7 +194,7 @@ class Glyph:
     
     ret.mass = None if self.mass is None else self.mass.copy()
     ret.center = None if self.center is None else self.center.copy()
-    ret.feat = None if self.feat is None else map(lambda a: a.copy(), self.feat)
+    ret.feat = None if self.feat is None else [a.copy() for a in self.feat]
     ret.v_offset = self.v_offset
     
     return ret
@@ -216,7 +216,7 @@ class Glyph:
     if self.mass is None:
       self.mass = numpy.zeros(2, dtype=numpy.float32)
       weight = 0.0
-      for i in xrange(self.lg.vertex_count):
+      for i in range(self.lg.vertex_count):
         info = self.lg.get_vertex(i)
         
         weight += 1.0
@@ -231,7 +231,7 @@ class Glyph:
       self.center = numpy.zeros(2, dtype=numpy.float32)
       weight = 0.0
     
-      for i in xrange(self.lg.vertex_count):
+      for i in range(self.lg.vertex_count):
         info = self.lg.get_vertex(i)
         w = info[5] * info[5] * info[6] # Radius squared * density - proportional to quantity of ink, assuming (correctly as rest of system currently works) even sampling.
         if w>1e-6:
@@ -282,7 +282,7 @@ class Glyph:
     best_x = info[0]
     best_y = info[1]
     
-    for i in xrange(1,self.lg.vertex_count):
+    for i in range(1,self.lg.vertex_count):
       info = self.lg.get_vertex(0)
       if info[0]<best_x:
         best_x = info[0]
@@ -297,7 +297,7 @@ class Glyph:
     best_x = info[0]
     best_y = info[1]
     
-    for i in xrange(1,self.lg.vertex_count):
+    for i in range(1,self.lg.vertex_count):
       info = self.lg.get_vertex(0)
       if info[0]>best_x:
         best_x = info[0]
@@ -317,7 +317,7 @@ class Glyph:
       min_x -= 1e-3
       max_x += 1e-3
       
-      for i in xrange(self.lg.vertex_count):
+      for i in range(self.lg.vertex_count):
         info = self.lg.get_vertex(i)
         w = info[5] * info[5] * info[6]
         t = (info[0] - min_x) / (max_x - min_x)
@@ -343,7 +343,7 @@ class Glyph:
       left_total = 0.0
       right_total = 0.0
       
-      for i in xrange(self.lg.vertex_count):
+      for i in range(self.lg.vertex_count):
         info = self.lg.get_vertex(i)
         w = info[5] * info[5] * info[6]
         t = (info[0] - min_x) / (max_x - min_x)
@@ -405,9 +405,7 @@ class GlyphDB:
     self.fnl.append(fn)
     
     # Load the LineGraph from the given filename, and get the homography...
-    f = open(fn, 'r')
-    data = ply2.read(f)
-    f.close()
+    data = read_ply2(fn)
     
     lg = LineGraph()
     lg.from_dict(data)
@@ -423,9 +421,9 @@ class GlyphDB:
     
     # First pass - create each glyph object...
     glyphs = []
-    for s in xrange(lg.segments):
+    for s in range(lg.segments):
       g = Glyph(lg, s, hg, bias = bias)
-      glyphs.append(g if '_' not in map(lambda t: t[0], g.lg.get_tags()) else None)
+      glyphs.append(g if '_' not in [t[0] for t in g.lg.get_tags()] else None)
 
 
     # Second pass - fill in the connectivity information supported by adjacency...
@@ -488,8 +486,8 @@ class GlyphDB:
           
           # Check if we have a multi-link scenario - if so choose links...
           if len(glyph_vert)>1 or len(other_vert)>1:
-            gv_y = map(lambda v: glyph.lg.get_vertex(v)[1], glyph_vert)
-            ov_y = map(lambda v: other.lg.get_vertex(v)[1], other_vert)
+            gv_y = [glyph.lg.get_vertex(v)[1] for v in glyph_vert]
+            ov_y = [other.lg.get_vertex(v)[1] for v in other_vert]
             
             if (max(gv_y) - min(ov_y)) > (max(ov_y) - min(gv_y)):
               glyph_vert = glyph_vert[numpy.argmax(gv_y)]
@@ -498,8 +496,8 @@ class GlyphDB:
               glyph_vert = glyph_vert[numpy.argmin(gv_y)]
               other_vert = other_vert[numpy.argmax(ov_y)]
             
-            lg_y = map(lambda v: g.lg.get_vertex(v)[1], link_glyph)
-            lo_y = map(lambda v: g.lg.get_vertex(v)[1], link_other)
+            lg_y = [g.lg.get_vertex(v)[1] for v in link_glyph]
+            lo_y = [g.lg.get_vertex(v)[1] for v in link_other]
 
             if (max(lg_y) - min(lo_y)) > (max(lo_y) - min(lg_y)):
               link_glyph = link_glyph[numpy.argmax(lg_y)]
@@ -576,20 +574,20 @@ class GlyphDB:
 
   def rem(self, fn):
     """Given a filename this removes all Glyphs that were loaded from that file."""
-    self.fnl = filter(lambda f: f!=fn, self.fnl)
+    self.fnl = [f for f in self.fnl if f!=fn]
     
     def die_glyph_die(glyph):
       """Returns False to kill the glyph, True to keep it. Removes from glyph_db when it returns False"""
       tags = glyph.get_linegraph().get_tags()
       for tag in tags:
         if tag[0]==('file:%s'%fn):
-          for t in filter(lambda t: t[0][:5]=='code:', tags):
+          for t in [t for t in tags if t[0][:5]=='code:']:
             self.by_code[int(t[0][5:])] = None
           return False
       return True
     
-    for key in self.db.iterkeys():
-      self.db[key] = filter(die_glyph_die, self.db[key])
+    for key in self.db.keys():
+      self.db[key] = list(filter(die_glyph_die, self.db[key]))
 
 
   def filenames(self):
@@ -608,7 +606,7 @@ class GlyphDB:
     """Returns a list of all the glyphs."""
     ret = []
     
-    for value in self.db.itervalues():
+    for value in self.db.values():
       ret += value
     
     return ret
@@ -629,7 +627,7 @@ class GlyphDB:
   def topup_glyph(self, key, minimum):
     """Given a key, including '_' to indicate where spaces go, this returns a list of matching glyphs. In the event it cant get the minimum (parameter) number it tops up using samples with different spacing; if that is not enough it considers alternate case."""
     ret = []
-    char = filter(lambda c: c!='_', key)
+    char = ''.join(c for c in key if c!='_')
     
     # What we want...
     if key in self.db: ret += self.db[key]
@@ -641,7 +639,7 @@ class GlyphDB:
         ret += self.db[a]
 
     # If its uppercase consider substituting a lowercase...
-    if len(ret)<minimum and char in string.uppercase:
+    if len(ret)<minimum and char in string.ascii_uppercase:
       ret += self.topup_glyph(key.lower(), minimum-len(ret))
     
     return ret
@@ -651,8 +649,8 @@ class GlyphDB:
     """Returns a dictionary of statistics about the data within - indexed by each char to a 4-tuple of counts, of how many of char c exist of the following form: (c, _c, c_, _c_)"""
     ret = dict()
     
-    for key, value in self.db.iteritems():
-      true_key = filter(lambda c: c!='_', key)
+    for key, value in self.db.items():
+      true_key = ''.join(c for c in key if c!='_')
       
       if true_key not in ret: ret[true_key] = [0,0,0,0]
       
@@ -669,17 +667,17 @@ class GlyphDB:
   def diff(self, char_left, char_right, space = False):
     """Returns a list of all the differences between characters that appear in the database, such that they satisfy the provided conditions - the character on the left is in char_left, the character on the right is in char_right, and if space is True at least one of them will be marked as having a space in the required direction, whilst False and neither can."""
     ret = []
-    for key, value in self.db.iteritems():
+    for key, value in self.db.items():
       space_left = key.endswith('_')
       if space==False and space_left==True:
         continue
 
-      if filter(lambda c: c!='_', key) in char_left:
+      if ''.join(c for c in key if c!='_') in char_left:
         
         for left_glyph in value:
           if left_glyph.right is not None:
             right_glyph = left_glyph.right[0]
-            if filter(lambda c: c!='_', right_glyph.key) in char_right:
+            if ''.join(c for c in right_glyph.key if c!='_') in char_right:
               
               space_right = right_glyph.key.startswith('_')
               if space==False and space_right==True:

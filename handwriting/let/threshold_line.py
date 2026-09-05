@@ -13,7 +13,7 @@ try:
 except ImportError:
   import weave
 
-from utils.start_cpp import start_cpp
+from .utils.start_cpp import start_cpp
 
 
 
@@ -35,14 +35,14 @@ class ThresholdLine:
     sdf[:,:] = 1e64
   
     # Mark all pixels that are at a transition boundary with the relevant cost - first the diagonals, then the halfs, as half is less than sqrt(2)...
-    tran_sqrt2 = numpy.zeros(sdf.shape, dtype=numpy.bool)
+    tran_sqrt2 = numpy.zeros(sdf.shape, dtype=bool)
     numpy.logical_or(mask[1:,1:]!=mask[:-1,:-1], tran_sqrt2[:-1,:-1], tran_sqrt2[:-1,:-1])
     numpy.logical_or(mask[1:,:-1]!=mask[:-1,1:], tran_sqrt2[:-1,1:], tran_sqrt2[:-1,1:])
     numpy.logical_or(mask[:-1,1:]!=mask[1:,:-1], tran_sqrt2[1:,:-1], tran_sqrt2[1:,:-1])
     numpy.logical_or(mask[:-1,:-1]!=mask[1:,1:], tran_sqrt2[1:,1:], tran_sqrt2[1:,1:])
     sdf[tran_sqrt2] = numpy.sqrt(2.0)
   
-    tran_half = numpy.zeros(sdf.shape, dtype=numpy.bool)
+    tran_half = numpy.zeros(sdf.shape, dtype=bool)
     numpy.logical_or(mask[1:,:]!=mask[:-1,:], tran_half[:-1,:], tran_half[:-1,:])
     numpy.logical_or(mask[:-1,:]!=mask[1:,:], tran_half[1:,:], tran_half[1:,:])
     numpy.logical_or(mask[:,1:]!=mask[:,:-1], tran_half[:,:-1], tran_half[:,:-1])
@@ -266,7 +266,7 @@ class ThresholdLine:
     cost = numpy.log(1.0-clip_prob) - numpy.log(clip_prob)
     
     # Threshold the given probabilities to create an initial mask...
-    mask = numpy.empty(prob.shape, dtype=numpy.bool)
+    mask = numpy.empty(prob.shape, dtype=bool)
     mask[:,:]  = prob>self.threshold
     
     # Create a signed distance function from the mask...
@@ -282,7 +282,7 @@ class ThresholdLine:
     sdf_gd_old = sdf.copy()
     sdf_gd = sdf.copy()
     
-    for _ in xrange(self.iters):
+    for _ in range(self.iters):
       # Calculate the gradient - break if its close enough to zero for all values...
       c = self.cost(cost, sdf, analyse, grad)
       if numpy.all(numpy.fabs(grad)<1e-5):

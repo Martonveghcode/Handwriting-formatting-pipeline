@@ -8,7 +8,7 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from linear import solve_sym
+from .linear import solve_sym
 
 
 
@@ -17,7 +17,7 @@ dims = 64
 terms = dims
 
 a = numpy.zeros((dims, dims), dtype=numpy.float32)
-for _ in xrange(terms):
+for _ in range(terms):
   cx = numpy.random.randint(dims)
   cy = numpy.random.randint(dims)
   val = numpy.random.normal()
@@ -45,9 +45,9 @@ x_calc, x_prec = gbp.result()
 dist = numpy.sqrt(numpy.square(x-x_calc).sum())
 diff = numpy.fabs(x-x_calc)
 
-print '%i iterations' % iters
-print 'Euclidean distance to ground truth = %f' % dist
+print('%i iterations' % iters)
+print('Euclidean distance to ground truth = %f' % dist)
 
 for threshold in [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 0.1, 1.0]:
-  print '# dims within %.6f: %i' % (threshold, (diff<threshold).sum())
-print 'Total dims = %i' % dims
+  print('# dims within %.6f: %i' % (threshold, (diff<threshold).sum()))
+print('Total dims = %i' % dims)

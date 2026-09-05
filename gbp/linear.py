@@ -7,7 +7,7 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from gbp import GBP
+from .gbp import GBP
 
 
 
@@ -20,11 +20,11 @@ def solve_sym(a, b, epsilon=1e-6):
   
   ret = GBP(b.shape[0])
   
-  r = range(b.shape[0])
+  r = list(range(b.shape[0]))
   ret.unary_raw(r, b, a[r,r])
   
   for i in r:
-    for j in xrange(i+1, b.shape[0]):
+    for j in range(i+1, b.shape[0]):
       if numpy.fabs(a[i, j])>epsilon:
         ret.pairwise(i, j, float(a[i, j]))
   

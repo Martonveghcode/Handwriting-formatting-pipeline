@@ -10,7 +10,7 @@
 
 
 
-import frf
+from . import frf
 
 import numpy
 
@@ -76,7 +76,7 @@ attributes = [Style, Content, Clothes]
 
 # Functions to generate examples of the three classes...
 def make_politician():
-  length = sum(map(lambda a: a.length, attributes))
+  length = sum([a.length for a in attributes])
   ret = numpy.empty(length, dtype=numpy.float32)
 
   offset = 0
@@ -87,7 +87,7 @@ def make_politician():
   return ret
 
 def make_marketing():
-  length = sum(map(lambda a: a.length, attributes))
+  length = sum([a.length for a in attributes])
   ret = numpy.empty(length, dtype=numpy.float32)
 
   offset = 0
@@ -98,7 +98,7 @@ def make_marketing():
   return ret
 
 def make_tele_sales():
-  length = sum(map(lambda a: a.length, attributes))
+  length = sum([a.length for a in attributes])
   ret = numpy.empty(length, dtype=numpy.float32)
 
   offset = 0
@@ -116,11 +116,11 @@ marketing_count = 32
 tele_sales_count = 32
 total_count = politician_count + marketing_count + tele_sales_count
 
-feat_length = sum(map(lambda a: a.length, attributes))
+feat_length = sum([a.length for a in attributes])
 dm = numpy.empty((total_count, feat_length), dtype=numpy.float32)
 cat = numpy.empty(total_count, dtype=numpy.int32)
 
-for i in xrange(total_count):
+for i in range(total_count):
   if i<politician_count:
     dm[i,:] = make_politician()
     cat[i] = 0
@@ -140,42 +140,42 @@ forest.min_exemplars = 4
 
 oob = forest.train(dm, cat, 8)
 
-print 'Made forest (oob = %.2f%%):' % ((1.0 - oob[0]) * 100.0)
-for i in xrange(min(len(forest),4)):
-  print '  Tree %i: %i bytes, %i nodes' % (i, forest[i].size, forest[i].nodes())
-print
+print('Made forest (oob = %.2f%%):' % ((1.0 - oob[0]) * 100.0))
+for i in range(min(len(forest),4)):
+  print('  Tree %i: %i bytes, %i nodes' % (i, forest[i].size, forest[i].nodes()))
+print()
 
-print 'First tree:'
-print forest[0].human()
-print
+print('First tree:')
+print(forest[0].human())
+print()
 
 
 # Test...
 data = numpy.empty((256, dm.shape[1]))
-for i in xrange(data.shape[0]):
+for i in range(data.shape[0]):
   data[i,:] = make_politician()
 
 res = forest.predict(data)[0]
 correct = (numpy.argmax(res['prob'], axis=1)==0).sum()
 
-print 'Of %i politicians %i (%.1f%%) were correctly detected.'%(data.shape[0], correct, 100.0*correct/float(data.shape[0]))
+print('Of %i politicians %i (%.1f%%) were correctly detected.'%(data.shape[0], correct, 100.0*correct/float(data.shape[0])))
 
 
 data = numpy.empty((256, dm.shape[1]))
-for i in xrange(data.shape[0]):
+for i in range(data.shape[0]):
   data[i,:] = make_marketing()
 
 res = forest.predict(data)[0]
 correct = (numpy.argmax(res['prob'], axis=1)==1).sum()
 
-print 'Of %i marketers %i (%.1f%%) were correctly detected.'%(data.shape[0], correct, 100.0*correct/float(data.shape[0]))
+print('Of %i marketers %i (%.1f%%) were correctly detected.'%(data.shape[0], correct, 100.0*correct/float(data.shape[0])))
 
 
 data = numpy.empty((256, dm.shape[1]))
-for i in xrange(data.shape[0]):
+for i in range(data.shape[0]):
   data[i,:] = make_tele_sales()
 
 res = forest.predict(data)[0]
 correct = (numpy.argmax(res['prob'], axis=1)==2).sum()
 
-print 'Of %i tele-sellers %i (%.1f%%) were correctly detected.'%(data.shape[0], correct, 100.0*correct/float(data.shape[0]))
+print('Of %i tele-sellers %i (%.1f%%) were correctly detected.'%(data.shape[0], correct, 100.0*correct/float(data.shape[0])))

@@ -8,10 +8,10 @@
 
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-from line_graph import LineGraph
+from .line_graph import LineGraph
 
 import numpy
-from ply2 import ply2
+from .ply2 import ply2
 
 import tempfile
 import unittest
@@ -28,20 +28,20 @@ class TestLineGraph(unittest.TestCase):
 
 
   def make_circle(self):
-    mask = numpy.zeros((512,512), dtype=numpy.bool)
+    mask = numpy.zeros((512,512), dtype=bool)
     
     centre = (mask.shape[0]//2, mask.shape[1]//2)
     radius = 128 + 64
     
     # Stupid approach to rendering a circle, but its quick to write...
-    for y in xrange(centre[0]-radius, centre[0]+radius+1):
+    for y in range(centre[0]-radius, centre[0]+radius+1):
       x_off = numpy.sqrt(radius**2 - (y - centre[0])**2)
       x_off = int(x_off+0.5)
       
       mask[y, centre[1]-x_off] = True
       mask[y, centre[1]+x_off] = True
     
-    for x in xrange(centre[1]-radius, centre[1]+radius+1):
+    for x in range(centre[1]-radius, centre[1]+radius+1):
       y_off = numpy.sqrt(radius**2 - (x - centre[1])**2)
       y_off = int(y_off+0.5)
       
@@ -70,7 +70,7 @@ class TestLineGraph(unittest.TestCase):
 
   def make_grid(self):
     # Setup a grid, with varying radii....
-    mask = numpy.zeros((512,512), dtype=numpy.bool)
+    mask = numpy.zeros((512,512), dtype=bool)
     
     mask[:,::32] = True
     mask[::32,:] = True
@@ -84,7 +84,7 @@ class TestLineGraph(unittest.TestCase):
     lg.from_mask(mask, radius)
     
     # Add some splits...
-    for y in xrange(0, 512, 32):
+    for y in range(0, 512, 32):
       distance, edge_index, edge_t = lg.nearest(240, y)
       lg.add_split(edge_index, edge_t)
     
@@ -101,7 +101,7 @@ class TestLineGraph(unittest.TestCase):
     
     # Check radius is varying...
     radii = numpy.empty(lg.vertex_count, dtype=numpy.float32)
-    for i in xrange(radii.shape[0]):
+    for i in range(radii.shape[0]):
       radii[i] = lg.get_vertex(i)[5]
 
     self.assertTrue(radii.min()<1.6)
@@ -115,7 +115,7 @@ class TestLineGraph(unittest.TestCase):
   
   def make_squares(self):
     # Create 4 squares....
-    mask = numpy.zeros((128,128), dtype=numpy.bool)
+    mask = numpy.zeros((128,128), dtype=bool)
     
     mask[8:57,8] = True
     mask[8:57,56] = True
@@ -174,7 +174,7 @@ class TestLineGraph(unittest.TestCase):
     
     # Verify we have the right set of tags...
     expected = ['A', 'B', 'C', 'D']
-    for i in xrange(lg.segments):
+    for i in range(lg.segments):
       tags = lg.get_tags(i)
       self.assertTrue(len(tags)==1)
       self.assertTrue(tags[0][0] in expected)
@@ -186,17 +186,17 @@ class TestLineGraph(unittest.TestCase):
   
   def make_text(self):
     # Create something that approximates what real text looks like....
-    mask = numpy.zeros((32,100), dtype=numpy.bool)
+    mask = numpy.zeros((32,100), dtype=bool)
     
     # Create an 'O'...
-    for y in xrange(16-12, 16+12+1):
+    for y in range(16-12, 16+12+1):
       x_off = numpy.sqrt(12**2 - (y - 16)**2)
       x_off = int(x_off+0.5)
       
       mask[y, 16-x_off] = True
       mask[y, 16+x_off] = True
     
-    for x in xrange(16-12, 16+12+1):
+    for x in range(16-12, 16+12+1):
       y_off = numpy.sqrt(12**2 - (x - 16)**2)
       y_off = int(y_off+0.5)
       
@@ -211,7 +211,7 @@ class TestLineGraph(unittest.TestCase):
     mask[28,36:53] = True
     mask[12:29,52] = True
     
-    for x in xrange(52, 69):
+    for x in range(52, 69):
       y = int(16 - 4.0 * numpy.sin(0.25*(x - 52)) + 0.5)
       mask[y,x] = True
     
@@ -221,7 +221,7 @@ class TestLineGraph(unittest.TestCase):
     mask[28,68:85] = True
     mask[4:28,84] = True
     
-    for x in xrange(84, 84+12+1):
+    for x in range(84, 84+12+1):
       os = x- 84
       mask[16+os,x] = True
       mask[16-os,x] = True
@@ -282,7 +282,7 @@ class TestLineGraph(unittest.TestCase):
     lg.segment()
     self.assertTrue(lg.segments==6)
     
-    for i in xrange(lg.segments):
+    for i in range(lg.segments):
       tags = lg.get_tags(i)
       adj = lg.adjacent(i)
       
@@ -328,13 +328,13 @@ class TestLineGraph(unittest.TestCase):
     self.assertTrue(numpy.fabs(a_min_y-b_min_y)<1e-12)
     self.assertTrue(numpy.fabs(a_max_y-b_max_y)<1e-12)
     
-    for i in xrange(a.vertex_count):
+    for i in range(a.vertex_count):
       va = a.get_vertex(i)
       vb = b.get_vertex(i)
-      for j in xrange(7):
+      for j in range(7):
         self.assertTrue(numpy.fabs(va[j]-vb[j])<1e-12)
     
-    for i in xrange(a.edge_count):
+    for i in range(a.edge_count):
       ea = a.get_edge(i)
       eb = b.get_edge(i)
       self.assertTrue(ea[0]==eb[0])

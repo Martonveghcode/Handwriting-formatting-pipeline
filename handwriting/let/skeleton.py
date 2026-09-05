@@ -13,21 +13,21 @@ try:
 except ImportError:
   import weave
 
-from ms.ms import MeanShift
+from .ms.ms import MeanShift
 
-from utils.start_cpp import start_cpp
+from .utils.start_cpp import start_cpp
 
 
 
 def zhang_suen(mask):
   """Given a mask this thins it to get a skeleton of the object, returning a replacement mask that is only one pixel wide."""
   assert(len(mask.shape)==2)
-  assert(mask.dtype==numpy.bool)
+  assert(mask.dtype==bool)
 
   # Variables that are needed...
   mask = mask.copy()
   count = numpy.empty(mask.shape, dtype=numpy.int32)
-  to_die = numpy.empty(mask.shape, dtype=numpy.bool)
+  to_die = numpy.empty(mask.shape, dtype=bool)
 
   # A version performed in c, to make it fast...
   try:
@@ -135,13 +135,13 @@ def zhang_suen(mask):
 
     return mask
   except:
-    print 'Inline code failed - slow python version being used instead'
+    print('Inline code failed - slow python version being used instead')
 
 
   # Create assorted intermediates...
   changes = numpy.empty(mask.shape, dtype=numpy.int32)
-  corner1 = numpy.empty(mask.shape, dtype=numpy.bool)
-  corner2 = numpy.empty(mask.shape, dtype=numpy.bool)
+  corner1 = numpy.empty(mask.shape, dtype=bool)
+  corner2 = numpy.empty(mask.shape, dtype=bool)
 
   # Iterate until convergance...
   iteration = -1
@@ -252,8 +252,8 @@ def refine_mask(density, line_mask, radius, threshold = 1e-3):
   
   # Setup the three buffers - the mask of pixels to checkout, the mask of confirmed pixels, and the subpixel refinement array...
   check_mask = line_mask.copy()
-  done_mask = numpy.zeros(line_mask.shape, dtype=numpy.bool)
-  keep_mask = numpy.zeros(line_mask.shape, dtype=numpy.bool)
+  done_mask = numpy.zeros(line_mask.shape, dtype=bool)
+  keep_mask = numpy.zeros(line_mask.shape, dtype=bool)
   subpixel = numpy.ones((line_mask.shape[0], line_mask.shape[1], 2), dtype=numpy.float32)
   
   # Loop until the check mask is empty...
@@ -270,12 +270,12 @@ def refine_mask(density, line_mask, radius, threshold = 1e-3):
     check_mask[:,:] = False
 
     # Run subspace constrained mean shift on each coordinate...
-    if source.shape[0]>1000: print 'scms %i points...'%source.shape[0]
+    if source.shape[0]>1000: print('scms %i points...'%source.shape[0])
     dest = ms.manifolds(source, 1)
-    if source.shape[0]>1000: print '...done'
+    if source.shape[0]>1000: print('...done')
     
     # Update the keep_mask with the converged pixels, checking that the locations are valid and recording subpixel information...
-    for i in xrange(dest.shape[0]):
+    for i in range(dest.shape[0]):
       source_i = numpy.round(source[i,:]).astype(numpy.int32)
       dest_i = numpy.round(dest[i,:]).astype(numpy.int32)
       offset = dest[i,:] - dest_i.astype(numpy.float32)
@@ -322,14 +322,14 @@ def refine_mask(density, line_mask, radius, threshold = 1e-3):
           if abs(source_i[0]-dest_i[0]) > abs(source_i[1]-dest_i[1]):
             low = int(numpy.ceil(min(source_i[0], dest_i[0])))
             high = int(numpy.ceil(max(source_i[0], dest_i[0])))
-            for y in xrange(low, high):
+            for y in range(low, high):
               t = (y - source_i[0]) / (dest_i[0] - source_i[0])
               x = (1.0-t) * source_i[1] + t * dest_i[1]
               keep_mask[y, x] = True
           else:
             low = int(numpy.ceil(min(source_i[1], dest_i[1])))
             high = int(numpy.ceil(max(source_i[1], dest_i[1])))
-            for x in xrange(low, high):
+            for x in range(low, high):
               t = (x - source_i[1]) / (dest_i[1] - source_i[1])
               y = (1.0-t) * source_i[0] + t * dest_i[0]
               keep_mask[y, x] = True

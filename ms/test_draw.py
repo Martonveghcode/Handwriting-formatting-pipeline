@@ -13,10 +13,10 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -61,7 +61,7 @@ numpy.random.shuffle(data)
 dim = 512
 image = numpy.zeros((dim, dim, 3), dtype=numpy.float32)
 
-for r in xrange(data.shape[0]):
+for r in range(data.shape[0]):
   loc = data[r,:]
   loc = (loc + size) / (2.0*size)
   loc *= dim
@@ -81,12 +81,12 @@ normal_kernels = ['uniform', 'triangular', 'epanechnikov', 'cosine', 'gaussian',
 ms.set_kernel(random.choice(normal_kernels))
 ms.set_spatial('kd_tree')
 
-print 'kernel = %s' % ms.get_kernel()
+print('kernel = %s' % ms.get_kernel())
 
 
 
 # Choose a reasonable size...
-print 'Selecting size using loo:'
+print('Selecting size using loo:')
 p = ProgBar()
 ms.scale_loo_nll(callback = p.callback)
 del p
@@ -96,9 +96,9 @@ del p
 # Render out a normalised probability map...
 image = numpy.zeros((dim, dim, 3), dtype=numpy.float32)
 
-print 'Rendering probability map:'
+print('Rendering probability map:')
 p = ProgBar()
-for row in xrange(dim):
+for row in range(dim):
   p.callback(row, dim)
   sam = numpy.append(numpy.linspace(-size, size, dim).reshape((-1,1)), ((row / (dim-1.0) - 0.5) * 2.0 * size) * numpy.ones(dim).reshape((-1,1)), axis=1)
   image[row, :, :] = ms.probs(sam).reshape((-1,1))
@@ -115,7 +115,7 @@ draw = ms.draws(data.shape[0])
 
 image = numpy.zeros((dim, dim, 3), dtype=numpy.float32)
 
-for r in xrange(draw.shape[0]):
+for r in range(draw.shape[0]):
   loc = draw[r,:]
   loc = (loc + size) / (2.0*size)
   loc *= dim
@@ -133,7 +133,7 @@ bootstrap = ms.bootstrap(data.shape[0])
 
 image = numpy.zeros((dim, dim, 3), dtype=numpy.float32)
 
-for r in xrange(bootstrap.shape[0]):
+for r in range(bootstrap.shape[0]):
   loc = bootstrap[r,:]
   loc = (loc + size) / (2.0*size)
   loc *= dim

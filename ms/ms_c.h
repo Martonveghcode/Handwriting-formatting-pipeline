@@ -14,6 +14,14 @@
 #include <Python.h>
 #include <structmember.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_Check PyLong_Check
+#define PyInt_AsLong PyLong_AsLong
+#define PyString_FromString PyUnicode_FromString
+#define PyString_FromStringAndSize PyUnicode_FromStringAndSize
+#define PyString_Size PyUnicode_GetLength
+#endif
+
 #ifndef __APPLE__
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #endif

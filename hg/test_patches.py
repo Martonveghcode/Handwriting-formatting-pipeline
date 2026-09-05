@@ -13,7 +13,7 @@ import sys
 import numpy
 from scipy.misc import imread, imsave
 
-from transform import *
+from .transform import *
 
 
 
@@ -63,8 +63,8 @@ patches = rotsets(image, points, rotations, offsets)
 output = numpy.zeros((psize * sy.shape[0], psize * sx.shape[0], 3), dtype=numpy.float32)
 patch = numpy.empty((psize, psize, 3))
 
-for py in xrange(sy.shape[0]):
-  for px in xrange(sx.shape[0]):
+for py in range(sy.shape[0]):
+  for px in range(sx.shape[0]):
     ind = py * sx.shape[0] + px
     
     patch[:,:,0] = patches['r'][ind,:].reshape((psize, psize))

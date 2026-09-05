@@ -13,6 +13,20 @@
 #include <structmember.h>
 #include <numpy/arrayobject.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_Check PyLong_Check
+#define PyInt_AsLong PyLong_AsLong
+#define PyInt_FromLong PyLong_FromLong
+#define PyString_Check(o) (PyUnicode_Check(o) || PyBytes_Check(o))
+#define PyString_FromString PyUnicode_FromString
+static inline const char * PyString_AsStringCompat(PyObject * value)
+{
+ if (PyUnicode_Check(value)) return PyUnicode_AsUTF8(value);
+ return PyBytes_AsString(value);
+}
+#define PyString_AsString PyString_AsStringCompat
+#endif
+
 
 
 // Pre-decleration...
@@ -89,7 +103,7 @@ struct Edge
  int segment; // Segment assignment at the start of the edge (Closest to neg) - it can be changed by splits along the edge.
 };
 
-inline Edge * HalfToEdge(HalfEdge * half)
+static inline Edge * HalfToEdge(HalfEdge * half)
 {
  if (half->reverse < half) half = half->reverse;
  return (Edge*)(void*)((char*)(void*)half - offsetof(Edge, pos));

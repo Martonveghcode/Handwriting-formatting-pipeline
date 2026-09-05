@@ -42,13 +42,13 @@ def mp_map(func, *iters, **keywords):
   if 'pool' in keywords: pool = keywords['pool']
   else: pool = mp.Pool()
 
-  code = marshal.dumps(func.func_code)
+  code = marshal.dumps(func.__code__)
 
   jobs = []
   for args in zip(*iters):
     jobs.append(pool.apply_async(run_code,(code,args)))
 
-  for i in xrange(len(jobs)):
+  for i in range(len(jobs)):
     jobs[i] = jobs[i].get()
 
   return jobs
@@ -67,29 +67,29 @@ class TestMpMap(unittest.TestCase):
     self.assertEqual(data, data_noop)
 
   def test_simple2(self):
-    data = [x for x in xrange(1000)]
+    data = [x for x in range(1000)]
 
     data_double = mp_map(lambda a: a*2, data)
 
-    self.assertEqual(map(lambda a: a*2,data), data_double)
+    self.assertEqual([a*2 for a in data], data_double)
 
   def test_gen(self):
     def gen():
-      for i in xrange(100): yield i
+      for i in range(100): yield i
 
     data_double = mp_map(lambda a: a*2, gen())
 
-    self.assertEqual(map(lambda a: a*2,gen()), data_double)
+    self.assertEqual([a*2 for a in gen()], data_double)
 
   def test_repeat(self):
     def mult(a,b):
       return a*b
 
-    data = [x for x in xrange(50,5000,5)]
+    data = [x for x in range(50,5000,5)]
 
     data_triple = mp_map(mult, data, repeat(3))
 
-    self.assertEqual(map(lambda a: a*3,data),data_triple)
+    self.assertEqual([a*3 for a in data],data_triple)
 
   def test_none(self):
     data = []

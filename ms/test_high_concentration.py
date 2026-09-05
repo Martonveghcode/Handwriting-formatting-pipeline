@@ -13,9 +13,9 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
+from .utils.cvarray import *
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -58,7 +58,7 @@ def visualise(fn, ms):
 data = []
 samples = 1024*16
 
-for ex_dim in xrange(3):
+for ex_dim in range(3):
   theta = 2.0 * numpy.pi * numpy.random.random(samples)
   deflection = 0.1 * numpy.random.random(samples) - 0.05
   
@@ -76,7 +76,7 @@ data /= numpy.sqrt(numpy.square(data).sum(axis=1)).reshape((-1,1))
 
 
 # Setup mean shift...
-print 'Fisher:'
+print('Fisher:')
 ms = MeanShift()
 ms.set_data(data, 'df')
 
@@ -86,7 +86,7 @@ ms.set_spatial('kd_tree')
 
 
 # Visualise the samples on a mercator projection...
-print '  Samples...'
+print('  Samples...')
 
 image = numpy.zeros((height, width, 3), dtype=numpy.float32)
 for vec in data:
@@ -105,13 +105,13 @@ cv.SaveImage('hc_fisher_mercator_input.png', image)
 
 
 # Make a mercator projection probability map, save it out...
-print '  KDE...'
+print('  KDE...')
 visualise('hc_fisher_mercator_kde.png', ms)
 
 
 
 # Draw a new set of samples; visualise them...
-print '  Draw...'
+print('  Draw...')
 
 draw = ms.draws(8*1024)
 
@@ -127,7 +127,7 @@ for vec in draw:
   try:
     image[y,x,:] = 255.0
   except:
-    print 'Bad draw:', vec
+    print('Bad draw:', vec)
 
 image = array2cv(image)
 cv.SaveImage('hc_fisher_mercator_draw.png', image)
@@ -135,7 +135,7 @@ cv.SaveImage('hc_fisher_mercator_draw.png', image)
 
 
 # Do mean shift on it, output a colour coded set of regions, same projection...
-print '  MS...'
+print('  MS...')
 ## Actual work...
 ms.merge_range = 0.01
 modes, indices = ms.cluster()
@@ -145,7 +145,7 @@ clusters = ms.assign_clusters(block.reshape(-1,3))
 clusters = clusters.reshape((height, width))
 image = numpy.zeros((height, width, 3), dtype=numpy.float32)
 
-for i in xrange(clusters.max()+1):
+for i in range(clusters.max()+1):
   colour = numpy.random.random(3)
   image[clusters==i,:] = colour.reshape((1,3))
 
@@ -161,9 +161,9 @@ mult = numpy.array([[numpy.cos(ang), -numpy.sin(ang), 0.0],
                     [numpy.sin(ang),  numpy.cos(ang), 0.0],
                     [           0.0,             0.0, 1.0]], dtype=numpy.float32)
 
-print '  Mult...'
+print('  Mult...')
 mult_data = data.copy()
-for i in xrange(mult_data.shape[0]):
+for i in range(mult_data.shape[0]):
   mult_data[i,:] = numpy.dot(mult, mult_data[i,:])
 
 ms_b = MeanShift()
@@ -185,13 +185,13 @@ visualise('hc_fisher_mult.png', ms_out)
 
 
 
-print '  Done.'
-print
+print('  Done.')
+print()
 
 
 
 # Now do the mirrored Fisher distribution...
-print 'Mirrored Fisher:'
+print('Mirrored Fisher:')
 
 # Generate some data - do a circle projected onto a sphere...
 samples = 1024
@@ -219,7 +219,7 @@ ms.set_spatial('kd_tree')
 
 
 # Visualise the samples on a mercator projection...
-print '  Samples...'
+print('  Samples...')
 
 image = numpy.zeros((height, width, 3), dtype=numpy.float32)
 for vec in data:
@@ -238,13 +238,13 @@ cv.SaveImage('hc_mirror_fisher_mercator_input.png', image)
 
 
 # Make a mercator projection probability map, save it out...
-print '  KDE...'
+print('  KDE...')
 visualise('hc_mirror_fisher_mercator_kde.png', ms)
 
 
 
 # Draw a new set of samples; visualise them...
-print '  Draw...'
+print('  Draw...')
 
 draw = ms.draws(8*1024)
 
@@ -260,7 +260,7 @@ for vec in draw:
   try:
     image[y,x,:] = 255.0
   except:
-    print 'Bad draw:', vec
+    print('Bad draw:', vec)
 
 image = array2cv(image)
 cv.SaveImage('hc_mirror_fisher_mercator_draw.png', image)
@@ -268,7 +268,7 @@ cv.SaveImage('hc_mirror_fisher_mercator_draw.png', image)
 
 
 # Do mean shift on it, output a colour coded set of regions, same projection...
-print '  MS...'
+print('  MS...')
 ## Actual work...
 ms.merge_range = 0.01
 modes, indices = ms.cluster()
@@ -278,7 +278,7 @@ clusters = ms.assign_clusters(block.reshape(-1,3))
 clusters = clusters.reshape((height, width))
 image = numpy.zeros((height, width, 3), dtype=numpy.float32)
 
-for i in xrange(clusters.max()+1):
+for i in range(clusters.max()+1):
   colour = numpy.random.random(3)
   image[clusters==i,:] = colour.reshape((1,3))
 
@@ -294,9 +294,9 @@ mult = numpy.array([[numpy.cos(ang), -numpy.sin(ang), 0.0],
                     [numpy.sin(ang),  numpy.cos(ang), 0.0],
                     [           0.0,             0.0, 1.0]], dtype=numpy.float32)
 
-print '  Mult...'
+print('  Mult...')
 mult_data = data.copy()
-for i in xrange(mult_data.shape[0]):
+for i in range(mult_data.shape[0]):
   mult_data[i,:] = numpy.dot(mult, mult_data[i,:])
 
 ms_b = MeanShift()
@@ -318,5 +318,5 @@ visualise('hc_mirror_fisher_mult.png', ms_out)
 
 
 
-print '  Done.'
-print
+print('  Done.')
+print()

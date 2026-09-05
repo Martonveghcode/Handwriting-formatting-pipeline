@@ -15,12 +15,14 @@
 
 import numpy
 
-from frf import frf
-
-
-
 # Global used by rf cost method - simply so it doesn't have to reload the random forest each time...
 cost_proxy = None
+
+
+def _load_frf():
+  """Import the optional legacy random-forest backend only when requested."""
+  from frf import frf
+  return frf
 
 
 
@@ -38,8 +40,8 @@ def end_dist_cost(left_g, right_g, mass_weight = 1.0):
     left_right = [left_g.right[0].most_left()[1]]
   else:
     # We have an actual link we can use, to get real values...
-    left_left  = map(lambda l: l[0].lg.get_vertex(l[3])[1], left_g.right[1])
-    left_right = map(lambda l: l[0].lg.get_vertex(l[4])[1], left_g.right[1])
+    left_left  = [l[0].lg.get_vertex(l[3])[1] for l in left_g.right[1]]
+    left_right = [l[0].lg.get_vertex(l[4])[1] for l in left_g.right[1]]
   
   if right_g.left==None:
     # No partner - select a horizontal link...
@@ -51,8 +53,8 @@ def end_dist_cost(left_g, right_g, mass_weight = 1.0):
     right_left  = [right_g.left[0].most_right()[1]]
   else:
     # We have an actual link we can use, to get real values...
-    right_right = map(lambda l: l[0].lg.get_vertex(l[3])[1], right_g.left[1])
-    right_left  = map(lambda l: l[0].lg.get_vertex(l[4])[1], right_g.left[1])
+    right_right = [l[0].lg.get_vertex(l[3])[1] for l in right_g.left[1]]
+    right_left  = [l[0].lg.get_vertex(l[4])[1] for l in right_g.left[1]]
     
   # Cost is the height differences for the match points on each side - multiple match points is a possibility...
   ret = 0.0
@@ -90,7 +92,7 @@ def end_dist_cost_rf(left_g, right_g, mass_weight = 1.0):
   # Check we have a random forest loaded and ready to go...
   global cost_proxy
   if cost_proxy==None:
-    cost_proxy = frf.load_forest('cost_proxy.rf')
+    cost_proxy = _load_frf().load_forest('cost_proxy.rf')
   
   # Identify the match points - if the glyphs have links then it is these, if not we are going to use a random forest to guess, so give up...
   joined_up = True
@@ -100,8 +102,8 @@ def end_dist_cost_rf(left_g, right_g, mass_weight = 1.0):
     joined_up = False
   else:
     # We have an actual link we can use, to get real values...
-    left_left  = map(lambda l: l[0].lg.get_vertex(l[3])[1], left_g.right[1])
-    left_right = map(lambda l: l[0].lg.get_vertex(l[4])[1], left_g.right[1])
+    left_left  = [l[0].lg.get_vertex(l[3])[1] for l in left_g.right[1]]
+    left_right = [l[0].lg.get_vertex(l[4])[1] for l in left_g.right[1]]
   
   if right_g.left==None:
     joined_up = False
@@ -109,8 +111,8 @@ def end_dist_cost_rf(left_g, right_g, mass_weight = 1.0):
     joined_up = False
   else:
     # We have an actual link we can use, to get real values...
-    right_right = map(lambda l: l[0].lg.get_vertex(l[3])[1], right_g.left[1])
-    right_left  = map(lambda l: l[0].lg.get_vertex(l[4])[1], right_g.left[1])
+    right_right = [l[0].lg.get_vertex(l[3])[1] for l in right_g.left[1]]
+    right_left  = [l[0].lg.get_vertex(l[4])[1] for l in right_g.left[1]]
     
   # Cost calculation depends if the letters are joined up or not...
   if joined_up:
@@ -146,8 +148,8 @@ def match_links(l_glyph, r_glyph):
       matches = []
           
       cost = numpy.zeros((len(l_links), len(r_links)), dtype=numpy.float32)
-      for il in xrange(cost.shape[0]):
-        for ir in xrange(cost.shape[1]):
+      for il in range(cost.shape[0]):
+        for ir in range(cost.shape[1]):
           yl = l_links[il][0].lg.get_vertex(l_links[il][3])[1]
           yr = r_links[ir][0].lg.get_vertex(r_links[ir][4])[1]
           cost[il,ir] += numpy.fabs(yl - yr)
@@ -204,7 +206,7 @@ def glyph_pair_offset(left_g, right_g, offset_sd, fallback = False):
     # Check the random forest is loaded...
     global cost_proxy
     if cost_proxy==None:
-      cost_proxy = frf.load_forest('cost_proxy.rf')
+      cost_proxy = _load_frf().load_forest('cost_proxy.rf')
 
     # Calculate the feature to be fed into the forest...
     feat = glyph_pair_feat(left_g, right_g)

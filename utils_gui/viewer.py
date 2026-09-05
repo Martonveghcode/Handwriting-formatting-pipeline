@@ -15,7 +15,8 @@ import math
 import cairo
 from gi.repository import Gtk, Gdk, GdkPixbuf
 
-from viewport_layer import *
+from .viewport_layer import *
+from functools import reduce
 
 
 
@@ -159,7 +160,7 @@ class Viewer(Gtk.DrawingArea):
 
     # If not currently set initialise the viewport to the default zoom/view...
     if self.viewport==None and len(self.layers)!=0:
-      self.height, self.width = reduce(lambda pa, pb: (max(pa[0],pb[0]), max(pa[1],pb[1])), map(lambda l: l.get_size(), self.layers))
+      self.height, self.width = reduce(lambda pa, pb: (max(pa[0],pb[0]), max(pa[1],pb[1])), [l.get_size() for l in self.layers])
 
       self.viewport = Viewport(1, 1, 0.0, 0.0, self.width, self.height)
       self.viewport.viewer = self

@@ -11,13 +11,13 @@
 import sys
 import os.path
 
-from line_graph import LineGraph
+from .line_graph import LineGraph
 
-from ply2 import ply2
+from .ply2 import ply2
 
-from utils_gui.viewer import *
-from line_layer import LineLayer
-from line_overlay_layer import LineOverlayLayer
+from .utils_gui.viewer import *
+from .line_layer import LineLayer
+from .line_overlay_layer import LineOverlayLayer
 
 
 
@@ -120,7 +120,7 @@ class LineGraphViewer(Gtk.Window):
     response = dialog.run()
     if response==Gtk.ResponseType.OK:
       fn = dialog.get_filename()
-      print 'Openning %s...'%fn
+      print('Openning %s...'%fn)
 
       lg = LineGraph()
       lg.from_dict(ply2.read(fn))
@@ -132,7 +132,7 @@ class LineGraphViewer(Gtk.Window):
       self.viewer.queue_draw()
 
       # Report back...
-      print 'File(s) loaded'
+      print('File(s) loaded')
 
     dialog.destroy()
   

@@ -14,10 +14,10 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -71,7 +71,7 @@ ms.merge_range = 0.05
 # Print out information in a convoluted way to test some convoluted features!..
 ms2 = MeanShift()
 ms2.copy_kernel(ms)
-print 'Kernel:', ms2.get_kernel()
+print('Kernel:', ms2.get_kernel())
 del ms2
 
 
@@ -85,7 +85,7 @@ for sample in data:
   e_x = (size-1) * (sample[1] + angle_len * sample[3]) / scale
   e_y = (size-1) * (sample[0] + angle_len * sample[2]) / scale
   
-  for i in xrange(angle_step):
+  for i in range(angle_step):
     t = float(i) / (angle_step-1)
     t_x = int(t * s_x + (1-t) * e_x)
     t_y = int(t * s_y + (1-t) * e_y)
@@ -112,7 +112,7 @@ for sample in draw:
   e_y = (size-1) * (sample[0] + angle_len * sample[2]) / scale
   
   
-  for i in xrange(angle_step):
+  for i in range(angle_step):
     t = float(i) / (angle_step-1)
     t_x = int(t * s_x + (1-t) * e_x)
     t_y = int(t * s_y + (1-t) * e_y)
@@ -131,7 +131,7 @@ cv.SaveImage('composite_draw.png', img)
 img = numpy.zeros((size, size, 3), dtype=numpy.float32)
 p = ProgBar()
 
-for y in xrange(size):
+for y in range(size):
   p.callback(y, size)
   
   for index, orient_x, orient_y in [(0,1.0,0.0), (1,0.0,1.0), (2,-1.0,0.0)]:
@@ -160,7 +160,7 @@ for sample in modes:
   e_y = (size-1) * (sample[0] + angle_len * sample[2]) / scale
   
   
-  for i in xrange(angle_step):
+  for i in range(angle_step):
     t = float(i) / (angle_step-1)
     t_x = int(t * s_x + (1-t) * e_x)
     t_y = int(t * s_y + (1-t) * e_y)
@@ -177,12 +177,12 @@ cv.SaveImage('composite_modes.png', img)
 
 # Visualise the mean shift clustering result...
 colours = []
-for i in xrange(modes.shape[0]):
+for i in range(modes.shape[0]):
   colours.append(numpy.random.random(3))
 
 img = numpy.zeros((size, size, 3), dtype=numpy.float32)
 
-for i in xrange(indices.shape[0]):
+for i in range(indices.shape[0]):
   sample = data[i,:]
   colour = colours[indices[i]]
   
@@ -192,12 +192,12 @@ for i in xrange(indices.shape[0]):
   e_y = (size-1) * (sample[0] + angle_len * sample[2]) / scale
   
   
-  for i in xrange(angle_step):
+  for i in range(angle_step):
     t = float(i) / (angle_step-1)
     t_x = int(t * s_x + (1-t) * e_x)
     t_y = int(t * s_y + (1-t) * e_y)
     try:
-      for j in xrange(3):
+      for j in range(3):
         if img[t_y,t_x,j] < t*colour[j]:
           img[t_y,t_x,j] = t*colour[j]
     except:

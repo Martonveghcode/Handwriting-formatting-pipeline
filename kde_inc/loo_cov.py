@@ -64,7 +64,7 @@ class PrecisionLOO:
     
     dm = self.dataMatrix()
     if subset!=None: dm = dm[subset,:]
-    mask = numpy.empty(dm.shape[0], dtype=numpy.bool)
+    mask = numpy.empty(dm.shape[0], dtype=bool)
     logNorm = -0.5*dm.shape[1]*math.log(2.0*math.pi*var)
 
     nll = 0.0

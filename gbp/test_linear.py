@@ -8,7 +8,7 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from linear import solve_sym
+from .linear import solve_sym
 
 
 
@@ -25,11 +25,11 @@ b = a.dot(x)
 
 # Solve using Jacobi iterations, as they are very similar to what we are doing here...
 jacobi_x = numpy.zeros(x.shape, dtype=numpy.float32)
-diag = a[range(dim), range(dim)]
+diag = a[list(range(dim)), list(range(dim))]
 zero_diag = a.copy()
-zero_diag[range(dim), range(dim)] = 0.0
+zero_diag[list(range(dim)), list(range(dim))] = 0.0
 
-for _ in xrange(1024):
+for _ in range(1024):
   jacobi_x = (b - zero_diag.dot(jacobi_x)) / diag
 
 
@@ -47,7 +47,7 @@ trws_x_calc, trws_x_prec = gbp2.result()
 
 
 # Determine if the matrix is diagonally dominant...
-diag = numpy.fabs(a[xrange(dim),xrange(dim)])
+diag = numpy.fabs(a[range(dim),range(dim)])
 offdiag = numpy.fabs(a).sum(axis=0) - diag
 diag_dom = numpy.all(diag>offdiag)
 
@@ -57,20 +57,20 @@ spec_rad = numpy.linalg.eig(numpy.eye(dim) - a)[0].max()
 
 
 # Print out the details...
-print 'a ='
-print a
-print 'b =', b
-print
-print 'diagonally dominant =', diag_dom
-print 'spectral radius =', spec_rad, '(too large)' if spec_rad>=1.0 else ''
-print 'det =', numpy.linalg.det(a)
-print 'bp iters =', bp_iters
-print 'trws iters =', trws_iters
-print
-print 'true x =', x
-print 'lina x =', numpy.linalg.solve(a,b)
-print 'Jacobi x =', jacobi_x
-print 'bp calc x =', bp_x_calc
+print('a =')
+print(a)
+print('b =', b)
+print()
+print('diagonally dominant =', diag_dom)
+print('spectral radius =', spec_rad, '(too large)' if spec_rad>=1.0 else '')
+print('det =', numpy.linalg.det(a))
+print('bp iters =', bp_iters)
+print('trws iters =', trws_iters)
+print()
+print('true x =', x)
+print('lina x =', numpy.linalg.solve(a,b))
+print('Jacobi x =', jacobi_x)
+print('bp calc x =', bp_x_calc)
 #print '  bp prec =', bp_x_prec
-print 'trws calc x =', trws_x_calc
+print('trws calc x =', trws_x_calc)
 #print '  trws prec =', trws_x_prec

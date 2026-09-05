@@ -8,12 +8,12 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from gbp import GBP
+from .gbp import GBP
 
 
 
 # Setup a chain...
-print 'Whole chain...'
+print('Whole chain...')
 solver = GBP(5)
 
 solver.unary(0, 0.0, 15.0)
@@ -21,57 +21,57 @@ solver.unary(4, 10.0, 15.0)
 solver.pairwise(slice(None,-1), slice(1, None), 0.5, 1.0)
 
 iters = solver.solve_bp()
-print 'iters =', iters
+print('iters =', iters)
 
 mean, prec = solver.result()
 
-print 'Mean:     ' + ' '.join(['%.2f'%v for v in mean])
-print 'Precison: ' + ' '.join(['%.2f'%v for v in prec])
-print
+print('Mean:     ' + ' '.join(['%.2f'%v for v in mean]))
+print('Precison: ' + ' '.join(['%.2f'%v for v in prec]))
+print()
 
 
 
 # Disable middle and resolve...
-print 'Middle gone...'
+print('Middle gone...')
 solver.disable(2)
 
 iters = solver.solve_bp()
-print 'iters =', iters
+print('iters =', iters)
 
 mean, prec = solver.result()
 
-print 'Mean:     ' + ' '.join(['%.2f'%v for v in mean])
-print 'Precison: ' + ' '.join(['%.2f'%v for v in prec])
-print
+print('Mean:     ' + ' '.join(['%.2f'%v for v in mean]))
+print('Precison: ' + ' '.join(['%.2f'%v for v in prec]))
+print()
 
 
 
 # Change the configuration...
-print 'Tail gone...'
+print('Tail gone...')
 solver = solver.clone() # Sneak in a test of clone.
 solver.enable(2)
 solver.disable(4)
 
 iters = solver.solve_trws()
-print 'iters =', iters
+print('iters =', iters)
 
 mean, prec = solver.result()
 
-print 'Mean:     ' + ' '.join(['%.2f'%v for v in mean])
-print 'Precison: ' + ' '.join(['%.2f'%v for v in prec])
-print
+print('Mean:     ' + ' '.join(['%.2f'%v for v in mean]))
+print('Precison: ' + ' '.join(['%.2f'%v for v in prec]))
+print()
 
 
 
 # Back to the starting state...
-print 'Original...'
+print('Original...')
 solver.enable(4)
 
 iters = solver.solve_trws()
-print 'iters =', iters
+print('iters =', iters)
 
 mean, prec = solver.result()
 
-print 'Mean:     ' + ' '.join(['%.2f'%v for v in mean])
-print 'Precison: ' + ' '.join(['%.2f'%v for v in prec])
-print
+print('Mean:     ' + ' '.join(['%.2f'%v for v in mean]))
+print('Precison: ' + ' '.join(['%.2f'%v for v in prec]))
+print()

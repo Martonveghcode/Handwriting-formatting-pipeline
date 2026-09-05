@@ -9,7 +9,7 @@
 
 
 # Compile the code if need be...
-from utils.make import make_mod
+from .utils.make import make_mod
 import os.path
 
 make_mod('transform_c', os.path.dirname(__file__), ['bspline.h', 'bspline.c', 'transform_c.h', 'transform_c.c'], numpy=True)

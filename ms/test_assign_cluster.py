@@ -12,7 +12,7 @@ import random
 import numpy
 import numpy.random
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -42,17 +42,17 @@ modes, indices = ms.cluster()
 
 
 # Print out basic stats...
-print 'kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial())
-print 'exemplars = %i; features = %i' % (ms.exemplars(), ms.features())
-print 'quality = %.3f; epsilon = %.3f; iter_cap = %i' % (ms.quality, ms.epsilon, ms.iter_cap)
-print
+print('kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial()))
+print('exemplars = %i; features = %i' % (ms.exemplars(), ms.features()))
+print('quality = %.3f; epsilon = %.3f; iter_cap = %i' % (ms.quality, ms.epsilon, ms.iter_cap))
+print()
 
 
 
 # Print out a grid of cluster assignments...
-for j in xrange(20):
-  for i in xrange(20):
+for j in range(20):
+  for i in range(20):
     fv = numpy.array([0.25*j, 0.25*i])
     c = ms.assign_cluster(fv)
-    print c,
-  print
+    print(c, end=' ')
+  print()

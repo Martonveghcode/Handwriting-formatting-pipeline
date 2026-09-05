@@ -14,8 +14,8 @@
 
 import os.path
 
-from viewer import *
-from tile_image import *
+from .viewer import *
+from .tile_image import *
 
 
 
@@ -105,14 +105,14 @@ class ImageViewer(Gtk.Window):
     response = dialog.run()
     if response==Gtk.ResponseType.OK:
       self.fn = dialog.get_filename()
-      print 'Openning %s...'%self.fn
+      print('Openning %s...'%self.fn)
 
       self.image.load(self.fn)
       self.viewer.reset_view()
       self.viewer.queue_draw()
 
       # Report back...
-      print 'File(s) loaded'
+      print('File(s) loaded')
 
     dialog.destroy()
 

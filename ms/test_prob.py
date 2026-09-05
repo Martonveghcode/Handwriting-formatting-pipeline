@@ -11,7 +11,7 @@
 import random
 import numpy
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -36,17 +36,17 @@ ms.set_scale(numpy.ones(2), 1)
 
 # Iterate and calculate the probability at every point...
 sam = numpy.arange(-5.0, 5.0, 0.15)
-prob = numpy.array(map(lambda v: ms.prob(numpy.array([v,1.0])), sam))
+prob = numpy.array([ms.prob(numpy.array([v,1.0])) for v in sam])
 
 
 
 # Print out basic stats...
-print 'kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial())
-print 'exemplars = %i; features = %i' % (ms.exemplars(), ms.features())
-print
+print('kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial()))
+print('exemplars = %i; features = %i' % (ms.exemplars(), ms.features()))
+print()
 
 
 
 # Visualise the output...
 for threshold in numpy.arange(prob.max(), 0.0, -prob.max()/15.0):
-  print ''.join(map(lambda p: '|' if p>threshold else ' ', prob))
+  print(''.join(['|' if p>threshold else ' ' for p in prob]))

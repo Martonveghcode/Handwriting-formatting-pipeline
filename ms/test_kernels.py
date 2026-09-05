@@ -12,9 +12,9 @@ import numpy
 import numpy.random
 from scipy.misc import imsave
 
-from utils.prog_bar import ProgBar
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 

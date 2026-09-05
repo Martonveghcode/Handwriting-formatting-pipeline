@@ -14,6 +14,20 @@
 #include <Python.h>
 #include <structmember.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_Check PyLong_Check
+#define PyInt_AsLong PyLong_AsLong
+#define PyInt_FromLong PyLong_FromLong
+#define PyString_Check(o) (PyUnicode_Check(o) || PyBytes_Check(o))
+#define PyString_FromString PyUnicode_FromString
+static inline const char * PyString_AsStringCompat(PyObject * value)
+{
+ if (PyUnicode_Check(value)) return PyUnicode_AsUTF8(value);
+ return PyBytes_AsString(value);
+}
+#define PyString_AsString PyString_AsStringCompat
+#endif
+
 
 
 // Decleration of a type to represent the costs between two adjacent labels...

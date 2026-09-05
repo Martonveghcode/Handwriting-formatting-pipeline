@@ -7,7 +7,7 @@
 // Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 
-
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
 
@@ -69,7 +69,7 @@ static PyObject * TreeBuffer_new_py(PyTypeObject * type, PyObject * args, PyObje
 static void TreeBuffer_dealloc_py(TreeBuffer * self)
 {
  TreeBuffer_dealloc(self);
- self->ob_type->tp_free((PyObject*)self);
+ Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 
@@ -84,11 +84,11 @@ static PyObject * TreeBuffer_size_from_head_py(Forest * self, PyObject * args)
 {
  // Read in the header...
   const char * data;
-  int data_size;
+  Py_ssize_t data_size;
   if (!PyArg_ParseTuple(args, "s#", &data, &data_size)) return NULL;
   
  // Verify its safe...
-  if (data_size<Tree_head_size())
+  if ((size_t)data_size<Tree_head_size())
   {
    PyErr_SetString(PyExc_RuntimeError, "Data block too small to be a Tree header");
    return NULL; 
@@ -147,24 +147,6 @@ static PyObject * TreeBuffer_importance_py(TreeBuffer * self, PyObject * args)
 
 
 
-static Py_ssize_t TreeBuffer_buffer_get(TreeBuffer * self, Py_ssize_t index, const void **ptr)
-{
- if (index!=0)
- {
-  PyErr_SetString(PyExc_SystemError, "Byte segment does not exist");
-  return -1;
- }
- 
- *ptr = (void*)self->tree;
- return self->size;
-}
-
-static Py_ssize_t TreeBuffer_buffer_segs(TreeBuffer * self, Py_ssize_t * lenp)
-{
- if (lenp!=NULL) *lenp = self->size;
- return 1;
-}
-
 static int TreeBuffer_buffer_acquire(TreeBuffer * self, Py_buffer * view, int flags)
 {
  if (view == NULL) return 0;
@@ -179,12 +161,8 @@ static void TreeBuffer_buffer_release(TreeBuffer * self, Py_buffer * view)
 
 static PyBufferProcs TreeBuffer_as_buffer =
 {
- (readbufferproc)TreeBuffer_buffer_get,
- (writebufferproc)TreeBuffer_buffer_get,
- (segcountproc)TreeBuffer_buffer_segs,
- NULL,
- (getbufferproc)TreeBuffer_buffer_acquire,
- (releasebufferproc)TreeBuffer_buffer_release,
+ .bf_getbuffer = (getbufferproc)TreeBuffer_buffer_acquire,
+ .bf_releasebuffer = (releasebufferproc)TreeBuffer_buffer_release,
 };
 
 
@@ -212,45 +190,16 @@ static PyMethodDef TreeBuffer_methods[] =
 
 static PyTypeObject TreeBufferType =
 {
- PyObject_HEAD_INIT(NULL)
- 0,                                /*ob_size*/
- "frf_c.Tree",                     /*tp_name*/
- sizeof(TreeBuffer),               /*tp_basicsize*/
- 0,                                /*tp_itemsize*/
- (destructor)TreeBuffer_dealloc_py,/*tp_dealloc*/
- 0,                                /*tp_print*/
- 0,                                /*tp_getattr*/
- 0,                                /*tp_setattr*/
- 0,                                /*tp_compare*/
- 0,                                /*tp_repr*/
- 0,                                /*tp_as_number*/
- 0,                                /*tp_as_sequence*/
- 0,                                /*tp_as_mapping*/
- 0,                                /*tp_hash */
- 0,                                /*tp_call*/
- 0,                                /*tp_str*/
- 0,                                /*tp_getattro*/
- 0,                                /*tp_setattro*/
- &TreeBuffer_as_buffer,            /*tp_as_buffer*/
- Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_NEWBUFFER, /*tp_flags*/
- "A tree within the Forest, but it provides no functionality - its only useful when attached to a Forest. Exists for loading Trees from a seperate source, such as a file or another Forest object (with a compatible configuration). Constructed with a size, in bytes, and impliments the memoryview(tree) interface, so you can extract/set the data within. The contents is entirly streamable, and therefore safe to be dumped to disk/socket etc. - file.write(my_tree) works, as does file.readinto(my_tree). It does have some static methods that provide useful information for loading a tree from a stream - size of the header, and header to total size.", /* tp_doc */
- 0,                                /* tp_traverse */
- 0,                                /* tp_clear */
- 0,                                /* tp_richcompare */
- 0,                                /* tp_weaklistoffset */
- 0,                                /* tp_iter */
- 0,                                /* tp_iternext */
- TreeBuffer_methods,               /* tp_methods */
- TreeBuffer_members,               /* tp_members */
- 0,                                /* tp_getset */
- 0,                                /* tp_base */
- 0,                                /* tp_dict */
- 0,                                /* tp_descr_get */
- 0,                                /* tp_descr_set */
- 0,                                /* tp_dictoffset */
- 0,                                /* tp_init */
- 0,                                /* tp_alloc */
- TreeBuffer_new_py,                /* tp_new */
+ PyVarObject_HEAD_INIT(NULL, 0)
+ .tp_name = "frf_c.Tree",
+ .tp_basicsize = sizeof(TreeBuffer),
+ .tp_dealloc = (destructor)TreeBuffer_dealloc_py,
+ .tp_as_buffer = &TreeBuffer_as_buffer,
+ .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+ .tp_doc = "A streamable tree buffer used by Forest.",
+ .tp_methods = TreeBuffer_methods,
+ .tp_members = TreeBuffer_members,
+ .tp_new = TreeBuffer_new_py,
 };
 
 
@@ -327,7 +276,7 @@ static PyObject * Forest_new_py(PyTypeObject * type, PyObject * args, PyObject *
 static void Forest_dealloc_py(Forest * self)
 {
  Forest_dealloc(self);
- self->ob_type->tp_free((PyObject*)self);
+ Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 
@@ -425,11 +374,11 @@ static PyObject * Forest_size_from_initial_py(Forest * self, PyObject * args)
 {
  // Read in the header...
   const char * data;
-  int data_size;
+  Py_ssize_t data_size;
   if (!PyArg_ParseTuple(args, "s#", &data, &data_size)) return NULL;
   
  // Verify its safe...
-  if (data_size<sizeof(ForestHeader))
+  if ((size_t)data_size<sizeof(ForestHeader))
   {
    PyErr_SetString(PyExc_RuntimeError, "Data block too small to be a Forest initial header.");
    return NULL; 
@@ -452,11 +401,11 @@ static PyObject * Forest_load_py(Forest * self, PyObject * args)
 {
  // Read in the header...
   const char * data;
-  int data_size;
+  Py_ssize_t data_size;
   if (!PyArg_ParseTuple(args, "s#", &data, &data_size)) return NULL;
   
  // Verify its safe...
-  if (data_size<sizeof(ForestHeader))
+  if ((size_t)data_size<sizeof(ForestHeader))
   {
    PyErr_SetString(PyExc_RuntimeError, "Data block too small to be a Forest initial header.");
    return NULL; 
@@ -469,7 +418,7 @@ static PyObject * Forest_load_py(Forest * self, PyObject * args)
    return NULL; 
   }
   
-  if (fh->size<data_size)
+  if ((fh->size<0)||((unsigned long long)data_size<(unsigned long long)fh->size))
   {
    PyErr_SetString(PyExc_RuntimeError, "Data block too small to be a Forest complete header.");
    return NULL; 
@@ -1577,45 +1526,16 @@ static PyMethodDef Forest_methods[] =
 
 static PyTypeObject ForestType =
 {
- PyObject_HEAD_INIT(NULL)
- 0,                                /*ob_size*/
- "frf_c.Forest",                   /*tp_name*/
- sizeof(Forest),                   /*tp_basicsize*/
- 0,                                /*tp_itemsize*/
- (destructor)Forest_dealloc_py,    /*tp_dealloc*/
- 0,                                /*tp_print*/
- 0,                                /*tp_getattr*/
- 0,                                /*tp_setattr*/
- 0,                                /*tp_compare*/
- 0,                                /*tp_repr*/
- 0,                                /*tp_as_number*/
- &Forest_as_sequence,              /*tp_as_sequence*/
- 0,                                /*tp_as_mapping*/
- 0,                                /*tp_hash */
- 0,                                /*tp_call*/
- 0,                                /*tp_str*/
- 0,                                /*tp_getattro*/
- 0,                                /*tp_setattro*/
- 0,                                /*tp_as_buffer*/
- Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
- "A random forest implimentation, designed with speed in mind, as well as I/O that doesn't suck (almost - should be 32/64 bit safe, but not endian change safe.) so it can actually be saved/loaded to disk. Remains fairly modular so it can be customised to specific use cases. Supports both classification and regression, as well as multivariate output (Including mixed classification/regression!). Input feature vectors can contain both discrete and continuous variables; kinda supports unknown values for discrete features. Provides the sequence interface, to access the individual Tree objects contained within. Note that is not thread safe - use multiprocessing if parallism is required, for which it has good support.", /* tp_doc */
- 0,                                /* tp_traverse */
- 0,                                /* tp_clear */
- 0,                                /* tp_richcompare */
- 0,                                /* tp_weaklistoffset */
- 0,                                /* tp_iter */
- 0,                                /* tp_iternext */
- Forest_methods,                   /* tp_methods */
- Forest_members,                   /* tp_members */
- 0,                                /* tp_getset */
- 0,                                /* tp_base */
- 0,                                /* tp_dict */
- 0,                                /* tp_descr_get */
- 0,                                /* tp_descr_set */
- 0,                                /* tp_dictoffset */
- 0,                                /* tp_init */
- 0,                                /* tp_alloc */
- Forest_new_py,                    /* tp_new */
+ PyVarObject_HEAD_INIT(NULL, 0)
+ .tp_name = "frf_c.Forest",
+ .tp_basicsize = sizeof(Forest),
+ .tp_dealloc = (destructor)Forest_dealloc_py,
+ .tp_as_sequence = &Forest_as_sequence,
+ .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+ .tp_doc = "A fast random forest supporting mixed input and output variables.",
+ .tp_methods = Forest_methods,
+ .tp_members = Forest_members,
+ .tp_new = Forest_new_py,
 };
 
 
@@ -1627,14 +1547,18 @@ static PyMethodDef frf_c_methods[] =
 
 
 
-#ifndef PyMODINIT_FUNC
-#define PyMODINIT_FUNC void
-#endif
-
-PyMODINIT_FUNC initfrf_c(void)
+static struct PyModuleDef frf_c_module =
 {
- // Create the module...
-  PyObject * mod = Py_InitModule3("frf_c", frf_c_methods, "Provides a straight forward random forest implimentation that is designed to be fast and have good loading/saving capabilities, unlike other Python ones.");
+ PyModuleDef_HEAD_INIT,
+ "frf_c",
+ "Provides a fast random forest implementation.",
+ -1,
+ frf_c_methods
+};
+
+
+PyMODINIT_FUNC PyInit_frf_c(void)
+{
  
  // Call some initialisation code...
   import_array();
@@ -1658,14 +1582,29 @@ PyMODINIT_FUNC initfrf_c(void)
   }
  
  // Register the Tree object...
-  if (PyType_Ready(&TreeBufferType) < 0) return;
+  if (PyType_Ready(&TreeBufferType) < 0) return NULL;
+
+  if (PyType_Ready(&ForestType) < 0) return NULL;
+
+  PyObject * mod = PyModule_Create(&frf_c_module);
+  if (mod==NULL) return NULL;
     
   Py_INCREF(&TreeBufferType);
-  PyModule_AddObject(mod, "Tree", (PyObject*)&TreeBufferType);
+  if (PyModule_AddObject(mod, "Tree", (PyObject*)&TreeBufferType)!=0)
+  {
+   Py_DECREF(&TreeBufferType);
+   Py_DECREF(mod);
+   return NULL;
+  }
  
  // Register the Forest object...
-  if (PyType_Ready(&ForestType) < 0) return;
- 
   Py_INCREF(&ForestType);
-  PyModule_AddObject(mod, "Forest", (PyObject*)&ForestType);
+  if (PyModule_AddObject(mod, "Forest", (PyObject*)&ForestType)!=0)
+  {
+   Py_DECREF(&ForestType);
+   Py_DECREF(mod);
+   return NULL;
+  }
+
+  return mod;
 }

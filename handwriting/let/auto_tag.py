@@ -9,7 +9,7 @@
 import os
 import os.path
 import bz2
-import cPickle as pickle
+import pickle as pickle
 import time
 import string
 
@@ -23,14 +23,12 @@ except ImportError:
 
 from gi.repository import Gtk
 
-from frf import frf
+from .utils.start_cpp import start_cpp
 
-from utils.start_cpp import start_cpp
+from .line_graph.utils_gui.viewer import Viewer
+from .line_graph.utils_gui.tile_image import TileImage
 
-from line_graph.utils_gui.viewer import Viewer
-from line_graph.utils_gui.tile_image import TileImage
-
-from ddp.ddp import DDP
+from .ddp.ddp import DDP
 
 
 
@@ -40,6 +38,10 @@ letters = string.ascii_lowercase + string.ascii_uppercase
 
 class AutoTagDialog(Gtk.Dialog):
   def __init__(self, let):
+    # The large legacy random-forest extension is only needed when this
+    # optional dialog is opened; keep normal annotation startup independent.
+    from .frf import frf
+
     Gtk.Dialog.__init__(self, title='Automatic Tagging')
     
     self.let = let
@@ -61,16 +63,16 @@ class AutoTagDialog(Gtk.Dialog):
       state = 'Failed to find handwriting model - nothing will happen when you hit go!'
       path = os.path.dirname(os.path.abspath(let.fn)).split(os.sep)
     
-      for i in xrange(len(path),1,-1):
+      for i in range(len(path),1,-1):
         db_fn = os.path.join(*(['/'] + path[:i] + ['hwr.rf']))
         if os.path.isfile(db_fn):
-          start = time.clock()
+          start = time.perf_counter()
           self.let.auto_model = dict()
           self.let.auto_model['model'] = frf.Forest()
           f = bz2.BZ2File(db_fn, 'r')
           
           parts = pickle.load(f)
-          for key, value in parts.iteritems():
+          for key, value in parts.items():
             self.let.auto_model[key] = value
   
           # The Forest header...
@@ -81,7 +83,7 @@ class AutoTagDialog(Gtk.Dialog):
           trees = self.let.auto_model['model'].load(head)
   
           # Each tree in return...
-          for _ in xrange(trees):
+          for _ in range(trees):
             header = f.read(frf.Tree.head_size())
             size = frf.Tree.size_from_head(header)
     
@@ -143,7 +145,7 @@ class AutoTagDialog(Gtk.Dialog):
       # Clear up all tags/splits currently on the line graph before we start this crazy dance...
       start_time = time.clock()
       
-      print 'Terminating existing tags/splits...'
+      print('Terminating existing tags/splits...')
       for tag in self.let.line.get_tags():
         self.let.line.rem(tag[1], tag[2])
         
@@ -153,21 +155,21 @@ class AutoTagDialog(Gtk.Dialog):
       self.let.line.segment() # Just incase it goes pear shaped - stops errors on returning to the original interface.
       
       # Extract features from the line graph...
-      print 'Extracting features...'
+      print('Extracting features...')
       start = time.time()
       feats = self.let.line.features(**self.let.auto_model['feat'])
       end = time.time()
-      print '...done in %.1f seconds' % (end - start)
+      print('...done in %.1f seconds' % (end - start))
       
       # Run the model on the features...
-      print 'Classifying features...'
+      print('Classifying features...')
       start = time.time()
       probs = self.let.auto_model['model'].predict(feats)[0]['prob'] # [vertex, class probability]
       end = time.time()
-      print '...done in %.1f seconds' % (end - start)
+      print('...done in %.1f seconds' % (end - start))
       
       # Extract the location of each feature in line space...
-      print 'Getting vertices in line space...'
+      print('Getting vertices in line space...')
       hg = self.let.ruled.homography
       ihg = la.inv(hg)
       pos = self.let.line.pos(ihg)
@@ -188,7 +190,7 @@ class AutoTagDialog(Gtk.Dialog):
         if len(text)==0: continue
           
         line_no = part['line'][0]
-        print 'Processing line %i...' % line_no
+        print('Processing line %i...' % line_no)
         
         
         # Run dynamic programming...
@@ -209,11 +211,11 @@ class AutoTagDialog(Gtk.Dialog):
             punc_words.append(word)
           punc_words += tail
         
-        coded = '_'.join(map(lambda w: '_'.join(w), punc_words))
+        coded = '_'.join(['_'.join(w) for w in punc_words])
         coded = '_' + coded + '_'
-        classed = numpy.array(map(lambda c: self.let.auto_model['classes'].index(c) if c in self.let.auto_model['classes'] else 0, coded))
+        classed = numpy.array([self.let.auto_model['classes'].index(c) if c in self.let.auto_model['classes'] else 0 for c in coded])
         
-        print coded
+        print(coded)
         
         def word_to_wes(word):
           if len(word)==1:
@@ -224,7 +226,7 @@ class AutoTagDialog(Gtk.Dialog):
           return 'h ' + ' '.join('b' * (len(word)-2)) + ' t' # h = head, b = body, t = tail.
         wes = ' ' + ' '.join(map(word_to_wes, punc_words)) + ' '
         
-        print 'Found %i sections' % len(classed)
+        print('Found %i sections' % len(classed))
         
         
         ## Create the discrete dynamic programming solver...
@@ -232,7 +234,7 @@ class AutoTagDialog(Gtk.Dialog):
         dp.prepare(steps, len(classed))
         
         ## Do the unary terms...
-        print 'Calculating DP unary terms...'
+        print('Calculating DP unary terms...')
         uc = numpy.zeros((steps, classed.shape[0]), dtype=numpy.float32)
         uw = numpy.zeros(steps, dtype=numpy.float32)
         
@@ -289,7 +291,7 @@ class AutoTagDialog(Gtk.Dialog):
         dp.unary(0, uc)
         
         ## Do the pairwise terms - weighted to encourage splits in such areas...
-        print 'Setting DP pairwise terms...'
+        print('Setting DP pairwise terms...')
         tranc = numpy.clip(uw, 0.5, 1.0)
         tranc = 2.0 * 0.5 * (tranc[:-1] + tranc[1:])
         tranc = numpy.concatenate((numpy.zeros((steps-1), dtype=numpy.float32)[numpy.newaxis,:], tranc[numpy.newaxis,:])).T
@@ -297,16 +299,16 @@ class AutoTagDialog(Gtk.Dialog):
         dp.pairwise(0, ['ordered'] * (steps-1), tranc)
         
         ## Solve...
-        print 'Dynamic programming...'
+        print('Dynamic programming...')
         start = time.time()
         best, cost = dp.best(classed.shape[0]-1)
         end = time.time()
-        print '...done in %.1f seconds' % (end - start)
-        print 'MAP cost = %.3f' % cost
+        print('...done in %.1f seconds' % (end - start))
+        print('MAP cost = %.3f' % cost)
       
         # Convert the transitions to x positions...
         splits = [min_x] # x coordinate of each split, plus bounds
-        for i in xrange(1, steps):
+        for i in range(1, steps):
           if best[i-1]!=best[i]:
             val = (i / float(steps)) * (max_x - min_x) + min_x
             splits.append(val)
@@ -318,7 +320,7 @@ class AutoTagDialog(Gtk.Dialog):
         
         # Find the centres of the letters and tag them...
         final_tag = [None] * len(coded)
-        for i in xrange(len(coded)):
+        for i in range(len(coded)):
           if coded[i]!='_':
             # The tag we are applying...
             if wes[i]=='b': tag = coded[i]
@@ -406,7 +408,7 @@ class AutoTagDialog(Gtk.Dialog):
             
             return False
           
-          cuts = filter(valid_cut, cuts)
+          cuts = list(filter(valid_cut, cuts))
           
           # Apply all remaining cuts (Generally only 1, but could be two for a double connection, e.g. double t)...
           for cut in cuts:
@@ -428,13 +430,13 @@ class AutoTagDialog(Gtk.Dialog):
         d = numpy.empty(((uc.shape[0]-1)*uc.shape[1], 6), dtype=numpy.float32)
         max_cost = uc[1:,:].max()
         
-        d[:,0], d[:,1] = map(lambda a: a.flatten(), numpy.meshgrid(numpy.arange(1, uc.shape[0]), numpy.arange(uc.shape[1]), indexing='ij'))
+        d[:,0], d[:,1] = [a.flatten() for a in numpy.meshgrid(numpy.arange(1, uc.shape[0]), numpy.arange(uc.shape[1]), indexing='ij')]
         d[:,2] = size
         d[:,3] = numpy.clip((uc[1:,:].flatten() / max_cost) * 3.0 - 2.0, 0.0, 1.0)
         d[:,4] = numpy.clip((uc[1:,:].flatten() / max_cost) * 3.0 - 1.0, 0.0, 1.0)
         d[:,5] = numpy.clip((uc[1:,:].flatten() / max_cost) * 3.0 - 0.0, 0.0, 1.0)
         
-        for i in xrange(d.shape[0]):
+        for i in range(d.shape[0]):
           p = to_dot.dot([d[i,0], d[i,1], 1.0])
           p /= p[2]
           d[i,1] = p[0]
@@ -444,17 +446,17 @@ class AutoTagDialog(Gtk.Dialog):
 
         
       # Recalculate the segments - above almost certainly messed them up...
-      print 'Recalculating segments...'
+      print('Recalculating segments...')
       self.let.line.segment()
         
       # Hack the i dot problem - find all untagged segments and link them to a suitable segment if there is one that makes sense - check for alternate segments with tags in the same vertical...
-      print 'Planning tittle assignment...'
+      print('Planning tittle assignment...')
       to_create = [] # Two stage for computational sanity.
       planned = dict() # To avoid double links.
       vert_seg = self.let.line.get_segs()
       pos = self.let.line.pos()
       
-      for seg in xrange(self.let.line.segments):
+      for seg in range(self.let.line.segments):
         adj = self.let.line.adjacent(seg)
         tags = self.let.line.get_tags(seg)
         if len(adj)==0 and len(tags)==0:
@@ -487,7 +489,7 @@ class AutoTagDialog(Gtk.Dialog):
           ## Convert edges into segment numbers, using a set to remove duplicates...
           friends = set()
           for es in edges:
-            for ei in xrange(*es.indices(self.let.line.edge_count)):
+            for ei in range(*es.indices(self.let.line.edge_count)):
               edge = self.let.line.get_edge(ei)
               
               friends.add(vert_seg[edge[0]])
@@ -539,7 +541,7 @@ class AutoTagDialog(Gtk.Dialog):
 
           rv = numpy.where(vert_seg==friend)[0]
           if rv.shape[0]==0: # Posible, though indicative of a previous issue.
-            print 'Considered auto-link to a 0 vertex segment - weird'
+            print('Considered auto-link to a 0 vertex segment - weird')
             continue 
           dx = numpy.zeros(rv.shape, dtype=numpy.float32)
           dy = numpy.zeros(rv.shape, dtype=numpy.float32)
@@ -564,14 +566,14 @@ class AutoTagDialog(Gtk.Dialog):
             t_friend = 0.0 if edges_friend[0][1]==False else 1.0
             to_create.append((edges_seg[0][0], t_seg, edges_friend[0][0], t_friend))
             
-            print 'Going to linked segment %i to segment %i' % (seg, friend)
+            print('Going to linked segment %i to segment %i' % (seg, friend))
       
       # Apply the above and rebuild the segments...
-      print 'Enacting tittle assignment plan...'
+      print('Enacting tittle assignment plan...')
       for cmd in to_create:
         self.let.line.add_link(*cmd)
       self.let.line.segment()
       
-      print 'Auto-tagging done'
+      print('Auto-tagging done')
       end_time = time.clock()
       self.let.alg_time += end_time - start_time

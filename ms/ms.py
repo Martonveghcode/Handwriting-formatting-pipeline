@@ -10,7 +10,7 @@
 
 # Compile the code if need be...
 try:
-  from utils.make import make_mod
+  from .utils.make import make_mod
   import os.path
 
   make_mod('ms_c', os.path.dirname(__file__), ['philox.h', 'philox.c', 'bessel.h', 'bessel.c', 'eigen.h', 'eigen.c', 'mult.h', 'mult.c', 'kernels.h', 'kernels.c', 'convert.h', 'convert.c', 'data_matrix.h', 'data_matrix.c', 'spatial.h', 'spatial.c', 'balls.h', 'balls.c', 'mean_shift.h', 'mean_shift.c', 'ms_c.h', 'ms_c.c'], numpy=True)
@@ -19,7 +19,7 @@ except: pass
 
 
 # Import the compiled module into this space, so we can pretend they are one and the same, just with automatic compilation...
-from ms_c import MeanShift as MeanShiftC
+from .ms_c import MeanShift as MeanShiftC
 
 import re
 import numpy
@@ -63,7 +63,7 @@ class MeanShift(MeanShiftC):
     best_score = None
     best_scale = None
     
-    for i in xrange(steps):
+    for i in range(steps):
       if callback!=None:
         callback(i, steps)
 
@@ -129,7 +129,7 @@ class MeanShift(MeanShiftC):
     ret = [[self.fetch_dm(), None, self.fetch_weight()]] # Start with level 0 only.
     
     # Iterate, recording the clustering at each scale...
-    for i in xrange(steps):
+    for i in range(steps):
       if callback!=None:
         callback(i, steps)
 

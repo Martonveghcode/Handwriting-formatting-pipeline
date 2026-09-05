@@ -13,22 +13,22 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
 # Test the mirrored version of the von_mises Fisher distribution, this time in 5D...
 
 # Create a dataset - just a bunch of points in one direction, so we can test the mirroring effect (Abuse MeanShift object to do this)...
-print 'Mirrored draws:'
+print('Mirrored draws:')
 
 vec = numpy.array([1.0, 0.5, 0.0, -0.5, -1.0])
 vec /= numpy.sqrt(numpy.square(vec).sum())
 
-print 'Base dir =', vec
+print('Base dir =', vec)
 
 draw = MeanShift()
 draw.set_data(vec, 'f')
@@ -49,13 +49,13 @@ mirror.set_kernel('mirror_fisher(64.0)')
 resample = mirror.draws(16)
 
 for row in resample:
-  print '[%6.3f %6.3f %6.3f %6.3f %6.3f]' % tuple(row)
-print
+  print('[%6.3f %6.3f %6.3f %6.3f %6.3f]' % tuple(row))
+print()
 
 
 
 # Test probabilities by ploting them...
-print 'Probability single 2D mirror Fisher:'
+print('Probability single 2D mirror Fisher:')
 mirror = MeanShift()
 mirror.set_data(numpy.array([1.0, 0.0]), 'f')
 mirror.set_kernel('mirror_fisher(16.0)')
@@ -66,11 +66,11 @@ probs = mirror.probs(vecs)
 probs /= probs.max()
 
 steps = 12
-for i in xrange(steps):
+for i in range(steps):
   threshold = 1.0 - (i+1)/float(steps)
   
-  print ''.join(map(lambda p: '#' if p>threshold else ' ', probs))
-print
+  print(''.join(['#' if p>threshold else ' ' for p in probs]))
+print()
 
 
 
@@ -85,7 +85,7 @@ print('Distribution modes:')
 print(centers)
 
 ## Use those modes to create a weighted mirror-fisher object, from which to draw lots of data...
-weights = map(lambda x: 2.0 / (2.0+x), xrange(centers.shape[0]))
+weights = [2.0 / (2.0+x) for x in range(centers.shape[0])]
 cext = numpy.concatenate((centers, numpy.array(weights)[:,numpy.newaxis]), axis=1)
 
 wmf = MeanShift()
@@ -166,9 +166,9 @@ def visualise(fn, ms, pixels = 512):
   prob_max = prob.max()
   
   image = numpy.zeros((pixels, pixels, 3), dtype=numpy.float32)
-  for y in xrange(pixels):
+  for y in range(pixels):
     ny = y / float(pixels-1)
-    for x in xrange(pixels):
+    for x in range(pixels):
       nx = x / float(pixels-1)
     
       dist = numpy.sqrt((nx-0.5)**2 + (ny-0.5)**2) * 4.0
@@ -216,7 +216,7 @@ mult_a.set_data(numpy.concatenate((cos_ang[:,numpy.newaxis], sin_ang[:,numpy.new
 mult_a.set_kernel('mirror_fisher(128.0)')
 
 visualise('mirror_fisher_mult_a.png', mult_a)
-print 'Prepared and visualised distribution A'
+print('Prepared and visualised distribution A')
 
 
 ## Create another distribution, designed to create a funky effect when combined with the first...
@@ -230,7 +230,7 @@ mult_b.set_data(numpy.concatenate((cos_ang[:,numpy.newaxis], sin_ang[:,numpy.new
 mult_b.set_kernel('mirror_fisher(2048.0)')
 
 visualise('mirror_fisher_mult_b.png', mult_b)
-print 'Prepared and visualised distribution B'
+print('Prepared and visualised distribution B')
 
 
 ## A borring distribution, without weighting to test that works...
@@ -239,7 +239,7 @@ mult_c.set_data(numpy.array([[1.0,0.0], [0.0,1.0]]), 'df')
 mult_c.set_kernel('mirror_fisher(32.0)')
 
 visualise('mirror_fisher_mult_c.png', mult_c)
-print 'Prepared and visualised distribution C'
+print('Prepared and visualised distribution C')
 
 
 ## Multiply a and b distributions and visualise...
@@ -252,7 +252,7 @@ prod_a_b.set_data(draws, 'df')
 prod_a_b.set_kernel('mirror_fisher(512.0)')
 
 visualise('mirror_fisher_prod_a_b.png', prod_a_b)
-print 'Prepared and visualised product of a and b'
+print('Prepared and visualised product of a and b')
 
 
 ## Multiply b and c distributions and visualise...
@@ -264,7 +264,7 @@ prod_b_c.set_data(draws, 'df')
 prod_b_c.copy_all(prod_a_b)
 
 visualise('mirror_fisher_prod_b_c.png', prod_b_c)
-print 'Prepared and visualised product of b and c'
+print('Prepared and visualised product of b and c')
 
 
 ## Multiply c and a distributions and visualise...
@@ -277,22 +277,22 @@ prod_c_a.set_data(draws, 'df')
 prod_c_a.copy_all(prod_a_b)
 
 visualise('mirror_fisher_prod_c_a_wrong.png', prod_c_a)
-print 'Prepared and visualised product of c and a'
+print('Prepared and visualised product of c and a')
 
 
 # Test out the memory breakdown method...
-print
-print 'Memory breakdown of product of c and a:'
+print()
+print('Memory breakdown of product of c and a:')
 mem = prod_c_a.memory()
 
-for key, value in mem.iteritems():
+for key, value in mem.items():
   if key=='kernel_ref_count' or key=='total':
     continue
   
   if key=='kernel':
-    print '  %s: %i bytes (ref count = %i)' % (key, value, mem['kernel_ref_count'])
+    print('  %s: %i bytes (ref count = %i)' % (key, value, mem['kernel_ref_count']))
   else:
-    print '  %s: %i bytes' % (key, value)
+    print('  %s: %i bytes' % (key, value))
 
-print 'total = %i bytes' % mem['total']
-print
+print('total = %i bytes' % mem['total'])
+print()

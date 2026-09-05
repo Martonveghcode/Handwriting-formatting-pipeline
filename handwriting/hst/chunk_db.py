@@ -19,10 +19,10 @@ import numpy
 import random
 import scipy.spatial
 
-from ply2 import ply2
 from line_graph.line_graph import LineGraph
 
 from texture_cache import TextureCache
+from ply2_cache import read as read_ply2
 
 from graph_cuts import maxflow # Not actually needed by this module, but composite uses it from c, and can't compile it if its not up-to-date - doing this makes sure it is.
 from composite import Composite
@@ -57,11 +57,18 @@ class ChunkDB:
   
   def set_params(self, samples = 8, angle_weight=1.0, radius_weight=1.0, density_weight=1.0):
     """Sets the chunk matching parameters - note that this resets the KD tree it has to build, so next convert will be computationally expensive."""
+    radius_mult = radius_weight / angle_weight
+    density_mult = density_weight / angle_weight
+    changed = (self.samples != samples or
+               self.radius_mult != radius_mult or
+               self.density_mult != density_mult)
+
     self.samples = samples
-    self.radius_mult = radius_weight / angle_weight
-    self.density_mult = density_weight / angle_weight
-    
-    self.kdtree = None
+    self.radius_mult = radius_mult
+    self.density_mult = density_mult
+
+    if changed:
+      self.kdtree = None
 
   
   def add(self, fn):
@@ -71,7 +78,7 @@ class ChunkDB:
     self.kdtree = None
     
     # Load the LineGraph from the given filename...
-    data = ply2.read(fn)
+    data = read_ply2(fn)
     
     lg = LineGraph()
     lg.from_dict(data)
@@ -79,7 +86,7 @@ class ChunkDB:
     texture = os.path.normpath(os.path.join(os.path.dirname(fn), data['meta']['image']))
     
     # Calculate the radius scaler and distance for this line graph, by calculating the median radius...
-    rads = map(lambda i: lg.get_vertex(i)[5], xrange(lg.vertex_count))
+    rads = [lg.get_vertex(i)[5] for i in range(lg.vertex_count)]
     rads.sort()
     median_radius = rads[len(rads)//2]
     radius_mult = 1.0 / median_radius
@@ -90,7 +97,7 @@ class ChunkDB:
     ret = 0
     
     for raw_chain in lg.chains():
-      for chain in filter(lambda c: len(c)>1, [raw_chain, raw_chain[::-1]]):
+      for chain in [c for c in [raw_chain, raw_chain[::-1]] if len(c)>1]:
         head = 0
         tail = 0
         length = 0.0
@@ -134,7 +141,7 @@ class ChunkDB:
   def rem(self, fn):
     """Given a filename removes all chunks that were extracted from it from the database."""
     if fn in self.fnl:
-      self.fnl = filter(lambda f: f!=fn, self.fnl)
+      self.fnl = [f for f in self.fnl if f!=fn]
       self.kdtree = None
       
       def die_chunk_die(c):
@@ -144,7 +151,7 @@ class ChunkDB:
           if tag[0]==('file:%s'%fn): return False
         return True
       
-      self.chunks = filter(die_chunk_die, self.chunks)
+      self.chunks = list(filter(die_chunk_die, self.chunks))
 
 
   def filenames(self):
@@ -162,11 +169,11 @@ class ChunkDB:
     
     # Check if the indexing structure is valid - if not create it...
     if self.kdtree==None:
-      data = numpy.array(map(lambda p: self.feature_vect(p[0], p[1]), self.chunks), dtype=numpy.float)
+      data = numpy.array([self.feature_vect(p[0], p[1]) for p in self.chunks], dtype=numpy.float64)
       self.kdtree = scipy.spatial.cKDTree(data, 4)
       
     # Calculate the radius scaler and distance for this line graph, by calculating the median radius...
-    rads = map(lambda i: lg.get_vertex(i)[5], xrange(lg.vertex_count))
+    rads = [lg.get_vertex(i)[5] for i in range(lg.vertex_count)]
     rads.sort()
     median_radius = rads[len(rads)//2]
     radius_mult = 1.0 / median_radius
@@ -210,7 +217,7 @@ class ChunkDB:
           orig_chunk = self.chunks[selected]
         else:
           options = list(self.kdtree.query(fv, choices)[1])
-          options = filter(lambda v: v not in recent, options)
+          options = [v for v in options if v not in recent]
           if not adv_match:
             selected = random.choice(options)
             orig_chunk = self.chunks[selected]
@@ -218,7 +225,7 @@ class ChunkDB:
             cost = 1e64 * numpy.ones(len(options))
             
             for i, option in enumerate(options):
-              fn = filter(lambda t: t[0].startswith('texture:'), self.chunks[option][0].get_tags())
+              fn = [t for t in self.chunks[option][0].get_tags() if t[0].startswith('texture:')]
               if len(fn)!=0:
                 fn = fn[0][0][len('texture:'):]
                 tex = textures[fn]
@@ -248,7 +255,7 @@ class ChunkDB:
         
         # If advanced matching is on write it out to canvas, so future choices will take it into account...
         if adv_match:
-          fn = filter(lambda t: t[0].startswith('texture:'), chunk.get_tags())
+          fn = [t for t in chunk.get_tags() if t[0].startswith('texture:')]
           if len(fn)!=0:
             fn = fn[0][0][len('texture:'):]
             tex = textures[fn]

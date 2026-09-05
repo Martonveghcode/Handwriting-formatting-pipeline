@@ -9,7 +9,7 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -46,6 +46,6 @@ ap = approximate.probs(sample)
 
 diff = numpy.fabs(cp-ap)
 
-print 'Maximum probabilities =', cp.max(), ap.max()
-print 'Maximum probability difference =', diff.max(), (diff.max() / cp.max())
-print 'Average probability difference =', diff.mean(), (diff.mean() / cp.max())
+print('Maximum probabilities =', cp.max(), ap.max())
+print('Maximum probability difference =', diff.max(), (diff.max() / cp.max()))
+print('Average probability difference =', diff.mean(), (diff.mean() / cp.max()))

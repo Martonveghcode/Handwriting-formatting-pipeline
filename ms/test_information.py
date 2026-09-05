@@ -9,10 +9,10 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from ms import MeanShift
+from .ms import MeanShift
 
 import cv
-from utils.cvarray import *
+from .utils.cvarray import *
 
 
 
@@ -250,8 +250,8 @@ blank_weight = 0.001
 
 def to_kde(grid):
   data = numpy.empty((7, 5), dtype=numpy.float32)
-  for y in xrange(7):
-    for x in xrange(5):
+  for y in range(7):
+    for x in range(5):
       data[y,x] = 1.0 if grid[y][x]!=' ' else blank_weight
   
   ret = MeanShift()
@@ -263,10 +263,10 @@ def to_kde(grid):
   return ret
 
 distributions = dict()
-for key, value in alphabet.iteritems():
+for key, value in alphabet.items():
   distributions[key] = to_kde(value)
 
-print 'Generated glyphs'
+print('Generated glyphs')
 
 
 
@@ -285,10 +285,10 @@ def resample(kde):
   return ret
 
 glyphs = dict()
-for key, kde in distributions.iteritems():
+for key, kde in distributions.items():
   glyphs[key] = resample(kde)
 
-print 'Resampled to create glyphs'
+print('Resampled to create glyphs')
 
 
 
@@ -319,26 +319,26 @@ image[numpy.asarray(scale * (data[:,0] - low_y), dtype=numpy.int32), numpy.asarr
 image = array2cv(image*255.0)
 cv.SaveImage('pangram.png', image)
 
-print 'Saved pangram image'
-print
+print('Saved pangram image')
+print()
 
 
 
 # Calculate the entropy of each letter - no idea what this means, but I know what theses values should like like, so its a good test of entropy...
-print 'Letter entropies:'
-for letter, kde in distributions.iteritems():
+print('Letter entropies:')
+for letter, kde in distributions.items():
   rekde = glyphs[letter]
-  print "  '%s': entropy (base) = %.3f nats, entropy (redraw) = %.3f nats" % (letter, kde.entropy(), rekde.entropy())
-print
+  print("  '%s': entropy (base) = %.3f nats, entropy (redraw) = %.3f nats" % (letter, kde.entropy(), rekde.entropy()))
+print()
 
 
 
 # Calculate the KL-divergence for every letter combination, printing out for each letter the one that best approximates the given...
-print 'Most similar letter by KL-divergence:'
-for char in glyphs.iterkeys():
+print('Most similar letter by KL-divergence:')
+for char in glyphs.keys():
   best = None
   
-  for partner in glyphs.iterkeys():
+  for partner in glyphs.keys():
     if partner==char:
       continue
     
@@ -348,5 +348,5 @@ for char in glyphs.iterkeys():
       best = partner
       best_kl = kl
   
-  print "'%s': Most similar by KL = '%s', with a KL of %f nats" % (char, best, best_kl)
-print
+  print("'%s': Most similar by KL = '%s', with a KL of %f nats" % (char, best, best_kl))
+print()

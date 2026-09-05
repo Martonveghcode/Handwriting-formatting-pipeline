@@ -232,8 +232,8 @@ f.close()
 
 
 ## Now do a ply2 file (ply2 loader cares about string encodings, so conversion to proper unicode objects is necesary given the text files actually contain utf8, and it will error out if not told this.)...
-f_text = numpy.array([unicode(block.text, 'utf8') for block in db], dtype=numpy.object)
-f_attribution = numpy.array([unicode(block.attribution, 'utf8') for block in db], dtype=numpy.object)
+f_text = numpy.array([unicode(block.text, 'utf8') for block in db], dtype=object)
+f_attribution = numpy.array([unicode(block.attribution, 'utf8') for block in db], dtype=object)
 
 
 data = ply2.create()

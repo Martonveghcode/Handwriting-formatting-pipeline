@@ -8,7 +8,8 @@
 
 import numpy
 
-from maxflow import MaxFlow
+from .maxflow import MaxFlow
+from functools import reduce
 
 
 
@@ -26,12 +27,12 @@ class BinaryLabel:
     
     # Cost of adjacent labels being different, as a list indexed by the dimension involved. Each entry is a cost matrix with the dimension of the costs reduced by one. Submodularity is not enforced until use - negatives can occur...
     # (Interface accepts the 2x2 grid of costs and converts them on the fly.)
-    self.costDifferent = map(lambda d: numpy.zeros(map(lambda e: shape[e] if e!=d else shape[e]-1, xrange(len(shape))), dtype=numpy.float32), xrange(len(shape)))
+    self.costDifferent = [numpy.zeros([shape[e] if e!=d else shape[e]-1 for e in range(len(shape))], dtype=numpy.float32) for d in range(len(shape))]
     
     # Create the MaxFlow object...
     nodes = reduce(lambda a,b: a*b, shape)
     vertices = 2 + nodes
-    edges = 2 * nodes + sum(map(lambda cd: reduce(lambda a,b: a*b, cd.shape), self.costDifferent))
+    edges = 2 * nodes + sum([reduce(lambda a,b: a*b, cd.shape) for cd in self.costDifferent])
     self.mf = MaxFlow(vertices, edges)
     
     # Create the source/sink and link up all the edges...
@@ -55,7 +56,7 @@ class BinaryLabel:
     ## Interconnects for each dimension...
     node_indices = node_indices.reshape(self.costFalse.shape)
     
-    for dim in xrange(len(self.costFalse.shape)):
+    for dim in range(len(self.costFalse.shape)):
       index = [slice(None)] * len(self.costFalse.shape)
       
       index[dim] = slice(-1)
@@ -172,7 +173,7 @@ class BinaryLabel:
     result = numpy.empty(self.costFalse.shape, dtype=numpy.int8)
     result = result.flatten()
     self.mf.store_side_range(0, result, 0, 1)
-    result = result.reshape(self.costFalse.shape).astype(numpy.bool)
+    result = result.reshape(self.costFalse.shape).astype(bool)
   
     # Return the tuple of assignment/cost...
     return (result, self.constant + self.mf.max_flow)

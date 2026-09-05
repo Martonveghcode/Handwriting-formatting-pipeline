@@ -8,11 +8,11 @@
 
 
 try:
-  from utils.make import make_mod
+  from .utils.make import make_mod
   import os.path
 
   make_mod('gbp_c', os.path.dirname(__file__), ['gbp_c.h', 'gbp_c.c'], numpy=True)
 except: pass
 
 
-from gbp_c import *
+from .gbp_c import *

@@ -29,10 +29,10 @@ from costs import *
 
 # Handle command line input of where to search...
 if len(sys.argv)<2:
-  print 'Creates a random forest trained on glyph relationships from joined up handwriting, so the relationships can be inferred for print handwriting. Outputs cost_proxy.rf in this directory, so hst knows where to find it.'
-  print 'Usage:'
-  print 'python build_db.py <dir to search for line graphs>'
-  print
+  print('Creates a random forest trained on glyph relationships from joined up handwriting, so the relationships can be inferred for print handwriting. Outputs cost_proxy.rf in this directory, so hst knows where to find it.')
+  print('Usage:')
+  print('python build_db.py <dir to search for line graphs>')
+  print()
   sys.exit(1)
 
 root_dir = sys.argv[1]
@@ -52,9 +52,9 @@ for root, _, files in os.walk(root_dir):
     lg_fn.append(os.path.join(root, fn))
 
 if len(lg_fn)==0:
-  print 'Failed to find any line graphs in the given directory'
+  print('Failed to find any line graphs in the given directory')
   sys.exit(1)
-print 'Found %i line graphs' % len(lg_fn)
+print('Found %i line graphs' % len(lg_fn))
 
 
 
@@ -62,7 +62,7 @@ print 'Found %i line graphs' % len(lg_fn)
 train = []
 
 for fn_num, fn in enumerate(lg_fn):
-  print 'Processing %s: (%i of %i)' % (fn, fn_num+1, len(lg_fn))
+  print('Processing %s: (%i of %i)' % (fn, fn_num+1, len(lg_fn)))
   
   # Load a glyph DB that contains just this database...
   gdb = GlyphDB()
@@ -78,7 +78,7 @@ for fn_num, fn in enumerate(lg_fn):
       pairs[(id(glyph), id(glyph.right[0]))] = (glyph, glyph.right[0])
   
   ## Random...
-  for _ in xrange(len(glyphs)*rand_mult):
+  for _ in range(len(glyphs)*rand_mult):
     # Random selection...
     left_g = glyphs[numpy.random.randint(len(glyphs))]
     right_g = glyphs[numpy.random.randint(len(glyphs))]
@@ -88,7 +88,7 @@ for fn_num, fn in enumerate(lg_fn):
       pairs[(id(left_g), id(right_g))] = (left_g, right_g)
   
   # Go through the selected pairs calculate the feature and the output then add that to the database...
-  for left_g, right_g in pairs.itervalues():
+  for left_g, right_g in pairs.values():
     # Calculate the feature...
     feat = glyph_pair_feat(left_g, right_g)
     
@@ -98,7 +98,7 @@ for fn_num, fn in enumerate(lg_fn):
     
     # Store ready to be fed to the forest of monsters...
     train.append((feat, cost, offset))
-print
+print()
 
 
 
@@ -111,10 +111,10 @@ for i, exemplar in enumerate(train):
   train_out[i,0] = exemplar[1]
   train_out[i,1] = exemplar[2]
 
-print '%i exemplars, containing %i features each' % (train_in.shape[0], train_in.shape[1])
-print 'cost range = %.3f - %.3f' % (train_out[:,0].min(), train_out[:,0].max())
-print 'offset range = %.3f - %.3f' % (train_out[:,1].min(), train_out[:,1].max())
-print
+print('%i exemplars, containing %i features each' % (train_in.shape[0], train_in.shape[1]))
+print('cost range = %.3f - %.3f' % (train_out[:,0].min(), train_out[:,0].max()))
+print('offset range = %.3f - %.3f' % (train_out[:,1].min(), train_out[:,1].max()))
+print()
 
 
 # Learn a random forest, going to both the adjacency cost and the vertical offset...
@@ -123,16 +123,16 @@ forest.configure('GG', 'GG', 'S' * train_in.shape[1])
 forest.opt_features = int(numpy.sqrt(train_in.shape[1]))
 forest.set_ratios(numpy.array([[1.0, 0.5]]))
 
-print 'Learning:'
+print('Learning:')
 pb = ProgBar()
 oob = forest.train(train_in, train_out, trees, pb.callback)
 del pb
 
-print 'Tree trained: oob cost error = %.3f, oob offset error = %.3f' % (oob[0], oob[1])
+print('Tree trained: oob cost error = %.3f, oob offset error = %.3f' % (oob[0], oob[1]))
 
 
 
 # Save it to disk...
 frf.save_forest('cost_proxy.rf', forest)
-print 'Saved and done'
-print
+print('Saved and done')
+print()

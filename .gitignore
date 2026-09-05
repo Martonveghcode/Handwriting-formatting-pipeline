@@ -2,6 +2,8 @@ syntax: glob
 *.pyc
 *.kate-swp
 *.so
+/.venv/
+/.venv-let/
 
 MANIFEST
 
@@ -11,4 +13,3 @@ MANIFEST
 df/*.png
 ms/*.png
 video/profile.csv
-

@@ -8,47 +8,47 @@
 
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-import frf
+from . import frf
 
 
 
-print 'Summary types:'
+print('Summary types:')
 for summary in frf.Forest.summary_list():
-  print '  ' + summary['name'] + ':'
-  print '    ' + 'code = ' + summary['code']
+  print('  ' + summary['name'] + ':')
+  print('    ' + 'code = ' + summary['code'])
   
   d = summary['description']
-  for i in xrange(0, len(d), 60):
-    print '    ' + d[i:i+60].strip()
+  for i in range(0, len(d), 60):
+    print('    ' + d[i:i+60].strip())
     
-  print
-print
+  print()
+print()
 
 
 
-print 'Information types:'
+print('Information types:')
 for info in frf.Forest.info_list():
-  print '  ' + info['name'] + ':'
-  print '    ' + 'code = ' + info['code']
+  print('  ' + info['name'] + ':')
+  print('    ' + 'code = ' + info['code'])
   
   d = info['description']
-  for i in xrange(0, len(d), 60):
-    print '    ' + d[i:i+60].strip()
+  for i in range(0, len(d), 60):
+    print('    ' + d[i:i+60].strip())
     
-  print
-print
+  print()
+print()
 
 
 
-print 'Learner types:'
+print('Learner types:')
 for learner in frf.Forest.learner_list():
-  print '  ' + learner['name'] + ':'
-  print '    ' + 'code = ' + learner['code']
-  print '    ' + 'test = ' + learner['test']
+  print('  ' + learner['name'] + ':')
+  print('    ' + 'code = ' + learner['code'])
+  print('    ' + 'test = ' + learner['test'])
   
   d = learner['description']
-  for i in xrange(0, len(d), 60):
-    print '    ' + d[i:i+60].strip()
+  for i in range(0, len(d), 60):
+    print('    ' + d[i:i+60].strip())
     
-  print
-print
+  print()
+print()

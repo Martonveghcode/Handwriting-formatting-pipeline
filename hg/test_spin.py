@@ -14,8 +14,8 @@ from collections import OrderedDict
 import numpy
 from scipy.misc import imread, imsave
 
-from homography import *
-from transform import *
+from .homography import *
+from .transform import *
 
 
 
@@ -41,7 +41,7 @@ def rotate_noop(image, steps = 32, transform = transform):
   rot = rotate(numpy.pi*2.0 / steps).dot(rot)
   rot = translate([0.5*shape[1], 0.5*shape[0]]).dot(rot)
   
-  for _ in xrange(steps):
+  for _ in range(steps):
     image = transform(rot, image)
   
   fillmasked(image)
@@ -63,7 +63,7 @@ algs['B-Spline 5'] = lambda hg, image: transform(hg, image, -1, -1, 5)
 
 
 
-for name, alg in algs.iteritems():
+for name, alg in algs.items():
   print(name)
   
   rot_image = rotate_noop(image, transform = alg)

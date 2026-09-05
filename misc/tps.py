@@ -61,7 +61,7 @@ class TPS:
     n[:,-1] = 1.0
       
     dist = numpy.zeros((x.shape[0], x.shape[0]), dtype=numpy.float32)
-    for i in xrange(self.n):
+    for i in range(self.n):
       dist += numpy.square(x[:,i].reshape((x.shape[0],1)) - x[:,i].reshape((1,x.shape[0])))
     dist = numpy.sqrt(dist)
       
@@ -125,7 +125,7 @@ class TPS:
     else:
       # Data matrix has been passed in...
       dist = numpy.zeros((data.shape[0], self.x.shape[0]), dtype=numpy.float32)
-      for i in xrange(self.n):
+      for i in range(self.n):
         dist += numpy.square(data[:,i].reshape((-1,1)) - self.x[:,i].reshape((1,-1)))
       dist = numpy.sqrt(dist)
       

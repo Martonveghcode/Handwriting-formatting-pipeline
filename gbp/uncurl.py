@@ -14,7 +14,7 @@ import time
 import numpy
 import scipy.misc
 
-from gbp import GBP
+from .gbp import GBP
 
 
 
@@ -64,14 +64,14 @@ grad_y = image[:,:,1]
 
 
 # Add pairwise terms to GBP solver, using the averages of adjacent gradients...
-for y in xrange(image.shape[0]):
+for y in range(image.shape[0]):
   g = 0.5 * (grad_x[y,:-1] + grad_x[y,1:])
   w = args.normal
   
   base = y * image.shape[1]
   solver.pairwise(slice(base, base+image.shape[1]-1), slice(base+1, base+image.shape[1]), g, w)
 
-for x in xrange(image.shape[1]):
+for x in range(image.shape[1]):
   g = 0.5 * (grad_y[:-1,x] + grad_y[1:,x])
   w = args.normal
   
@@ -80,19 +80,19 @@ for x in xrange(image.shape[1]):
 
 
 # Solve...
-print 'Solving...'
+print('Solving...')
 iters = 0
 start = time.clock()
 
 while True:
   it = solver.solve_trws(args.report, args.epsilon)
   iters += it
-  print('       %i iters, delta = %f (target = %f)' % (iters, solver.last_delta, args.epsilon))
+  print(('       %i iters, delta = %f (target = %f)' % (iters, solver.last_delta, args.epsilon)))
   if it!=args.report:
     break
 
 end = time.clock()
-print('...solved in %.1f seconds' % (end - start))
+print(('...solved in %.1f seconds' % (end - start)))
 
 
 

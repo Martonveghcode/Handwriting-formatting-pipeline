@@ -10,6 +10,12 @@
 #include <structmember.h>
 #include <numpy/arrayobject.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_Check PyLong_Check
+#define PyInt_AsLong PyLong_AsLong
+#define PyInt_FromLong PyLong_FromLong
+#endif
+
 
 
 #include "maxflow_c.h"
@@ -181,7 +187,7 @@ static PyObject * MaxFlow_new_py(PyTypeObject * type, PyObject * args, PyObject 
    if (res!=0)
    {
     MaxFlow_deinit(self);
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
     return PyErr_NoMemory();
    }
   }
@@ -193,7 +199,7 @@ static PyObject * MaxFlow_new_py(PyTypeObject * type, PyObject * args, PyObject 
 static void MaxFlow_dealloc_py(MaxFlow * self)
 {
  MaxFlow_deinit(self);
- self->ob_type->tp_free((PyObject*)self);
+ Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject * MaxFlow_resize_py(MaxFlow * self, PyObject * args, PyObject * kwds)
@@ -1455,45 +1461,15 @@ static PyMethodDef MaxFlow_methods[] =
 
 static PyTypeObject MaxFlowType =
 {
- PyObject_HEAD_INIT(NULL)
- 0,                              /*ob_size*/
- "maxflow_c.MaxFlow",            /*tp_name*/
- sizeof(MaxFlow),                /*tp_basicsize*/
- 0,                              /*tp_itemsize*/
- (destructor)MaxFlow_dealloc_py, /*tp_dealloc*/
- 0,                              /*tp_print*/
- 0,                              /*tp_getattr*/
- 0,                              /*tp_setattr*/
- 0,                              /*tp_compare*/
- 0,                              /*tp_repr*/
- 0,                              /*tp_as_number*/
- 0,                              /*tp_as_sequence*/
- 0,                              /*tp_as_mapping*/
- 0,                              /*tp_hash */
- 0,                              /*tp_call*/
- 0,                              /*tp_str*/
- 0,                              /*tp_getattro*/
- 0,                              /*tp_setattro*/
- 0,                              /*tp_as_buffer*/
- Py_TPFLAGS_DEFAULT,             /*tp_flags*/
- "For solving the max-flow (min-cut) problem. You initialise with the number of vertices and the number of edges, and then set one vertex to be the source, another to be the sink. The edges are then initialised with which vertices they connect, and the maximum flow they can do in both directions. After this solve can be called to find how much flow to send over each edge to obtain the maximum flow across the graph. Once solved the total flow, which side of the minimum cut each vertex is and the remaining flow (Noting that saturated means it is on the minimum cut) of each edge. It can be run repeatedtly, though the maximum flows are lost after each run and hence need to be reset.", /* tp_doc */
- 0,                              /* tp_traverse */
- 0,                              /* tp_clear */
- 0,                              /* tp_richcompare */
- 0,                              /* tp_weaklistoffset */
- 0,                              /* tp_iter */
- 0,                              /* tp_iternext */
- MaxFlow_methods,                /* tp_methods */
- MaxFlow_members,                /* tp_members */
- 0,                              /* tp_getset */
- 0,                              /* tp_base */
- 0,                              /* tp_dict */
- 0,                              /* tp_descr_get */
- 0,                              /* tp_descr_set */
- 0,                              /* tp_dictoffset */
- 0,                              /* tp_init */
- 0,                              /* tp_alloc */
- MaxFlow_new_py,                 /* tp_new */
+ PyVarObject_HEAD_INIT(NULL, 0)
+ .tp_name = "maxflow_c.MaxFlow",
+ .tp_basicsize = sizeof(MaxFlow),
+ .tp_dealloc = (destructor)MaxFlow_dealloc_py,
+ .tp_flags = Py_TPFLAGS_DEFAULT,
+ .tp_doc = "For solving the max-flow (min-cut) problem.",
+ .tp_methods = MaxFlow_methods,
+ .tp_members = MaxFlow_members,
+ .tp_new = MaxFlow_new_py,
 };
 
 
@@ -1505,19 +1481,31 @@ static PyMethodDef maxflow_c_methods[] =
 
 
 
-#ifndef PyMODINIT_FUNC
-#define PyMODINIT_FUNC void
-#endif
-
-PyMODINIT_FUNC initmaxflow_c(void)
+static struct PyModuleDef maxflow_c_module =
 {
- PyObject * mod = Py_InitModule3("maxflow_c", maxflow_c_methods, "Provides a solver for the maximum flow/minimum cut problem.");
- import_array();
+ PyModuleDef_HEAD_INIT,
+ "maxflow_c",
+ "Provides a solver for the maximum flow/minimum cut problem.",
+ -1,
+ maxflow_c_methods
+};
 
- if (PyType_Ready(&MaxFlowType) < 0) return;
+PyMODINIT_FUNC PyInit_maxflow_c(void)
+{
+ PyObject * mod;
+
+ import_array();
+ if (PyType_Ready(&MaxFlowType) < 0) return NULL;
+ mod = PyModule_Create(&maxflow_c_module);
+ if (mod==NULL) return NULL;
 
  Py_INCREF(&MaxFlowType);
- PyModule_AddObject(mod, "MaxFlow", (PyObject*)&MaxFlowType);
+ if (PyModule_AddObject(mod, "MaxFlow", (PyObject*)&MaxFlowType) < 0)
+ {
+  Py_DECREF(&MaxFlowType);
+  Py_DECREF(mod);
+  return NULL;
+ }
  
  // Create the api object, that other c modules can use to access this one...
   static MaxFlowAPI api;
@@ -1547,4 +1535,6 @@ PyMODINIT_FUNC initmaxflow_c(void)
  // Register a capsule for access to api...
   PyObject * api_capsule = PyCapsule_New((void*)&api, "maxflow_c.C_API", NULL);
   if (api_capsule!=NULL) PyModule_AddObject(mod, "C_API", api_capsule);
+
+ return mod;
 }

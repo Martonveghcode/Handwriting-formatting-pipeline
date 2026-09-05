@@ -12,7 +12,7 @@ import random
 import numpy
 import numpy.random
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -53,11 +53,11 @@ modes, indices = ms.cluster()
 
 
 # Print out basic stats...
-print 'kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial())
-print 'exemplars = %i; features = %i' % (ms.exemplars(), ms.features())
-print 'quality = %.3f; epsilon = %.3f; iter_cap = %i' % (ms.quality, ms.epsilon, ms.iter_cap)
-print 'weight = %.1f' % ms.weight()
-print
+print('kernel = %s; spatial = %s' % (ms.get_kernel(), ms.get_spatial()))
+print('exemplars = %i; features = %i' % (ms.exemplars(), ms.features()))
+print('quality = %.3f; epsilon = %.3f; iter_cap = %i' % (ms.quality, ms.epsilon, ms.iter_cap))
+print('weight = %.1f' % ms.weight())
+print()
 
 
 
@@ -69,8 +69,8 @@ dm = numpy.concatenate((y.flatten().reshape((-1,1)), x.flatten().reshape((-1,1))
 
 clusters = ms.assign_clusters(dm)
 
-for j in xrange(axis.shape[0]):
-  for i in xrange(axis.shape[0]):
+for j in range(axis.shape[0]):
+  for i in range(axis.shape[0]):
     loc = j*axis.shape[0] + i
-    print clusters[loc],
-  print
+    print(clusters[loc], end=' ')
+  print()

@@ -16,10 +16,15 @@
 import os.path
 import string
 import random
+import time
 import numpy
 import numpy.linalg as la
 
 import cairo
+import gi
+gi.require_foreign('cairo')
+gi.require_version('Gdk', '3.0')
+gi.require_version('GdkPixbuf', '2.0')
 from gi.repository import Gdk, GdkPixbuf
 
 from line_graph.line_graph import LineGraph
@@ -50,7 +55,7 @@ def select_glyphs_random(text, glyph_db, log_func = None):
     
     return random.choice(glyphs)
   
-  return filter(lambda x: x!=False, map(do_char, text))
+  return [x for x in map(do_char, text) if x!=False]
 
 
 
@@ -58,7 +63,7 @@ def select_glyphs_better_random(text, glyph_db, fetch_count = 8, log_func = None
   """A better random selection - takes into account word position."""
   ret = []
   
-  for i in xrange(len(text)):
+  for i in range(len(text)):
     if text[i] in string.whitespace: ret.append(None)
     else:
       space_before = True if i==0 or text[i-1] in string.whitespace else False
@@ -82,7 +87,7 @@ def select_glyphs_dp(text, glyph_db, fetch_count = 8, match_mult = 1.0, poor_fit
   # First pass - get a list of glyphs for each slot...
   choice = []
   
-  for i in xrange(len(text)):
+  for i in range(len(text)):
     if text[i] in string.whitespace: choice.append(None)
     else:
       space_before = True if i==0 or text[i-1] in string.whitespace else False
@@ -99,13 +104,13 @@ def select_glyphs_dp(text, glyph_db, fetch_count = 8, match_mult = 1.0, poor_fit
           log_func('Dropped character %s due to having no glyphs.'% text[i])
   
   # Second pass - calculate a constant message term, to bias towards better fitting glyphs...
-  data_term = map(lambda gs: numpy.zeros(len(gs), dtype=numpy.float32) if gs is not None else None, choice)
+  data_term = [numpy.zeros(len(gs), dtype=numpy.float32) if gs is not None else None for gs in choice]
   for i, gs in enumerate(choice):
     if gs is not None:
       space_before = True if i==0 or text[i-1] in string.whitespace else False
       space_after = True if i+1==len(text) or text[i+1] in string.whitespace else False
       
-      for j in xrange(len(gs)):
+      for j in range(len(gs)):
         if gs[j].key.startswith('_') != space_before: data_term[i][j] += poor_fit_cost
         if gs[j].key.endswith('_') != space_after: data_term[i][j] += poor_fit_cost
         if gs[j].key.strip('_') != text[i]: data_term[i][j] += poor_fit_cost
@@ -141,8 +146,8 @@ def select_glyphs_dp(text, glyph_db, fetch_count = 8, match_mult = 1.0, poor_fit
   # Setup the dp solver...
   dp = DDP()
   
-  clean_choice = filter(lambda c: c is not None, choice)
-  clean_data = filter(lambda c: c is not None, data_term)
+  clean_choice = [c for c in choice if c is not None]
+  clean_data = [c for c in data_term if c is not None]
   
   dp.prepare(numpy.array([len(c) for c in clean_choice], dtype=numpy.int32))
   
@@ -160,7 +165,7 @@ def select_glyphs_dp(text, glyph_db, fetch_count = 8, match_mult = 1.0, poor_fit
   
   # Extract the results...
   offset = 0
-  for i in xrange(len(choice)):
+  for i in range(len(choice)):
     if choice[i] is not None:
       choice[i] = choice[i][solution[offset]]
       offset += 1
@@ -195,7 +200,7 @@ def layout_source(glyph_list, glyph_db, gap = 0.2, gap_space = 0.6, log_func = N
   """More sophisticated layout method - takes the gap between letters to be the average of the gaps in the source, for the characters being used. If gaps are not avaliable it falls back on the global median."""
   
   # Calculate the average distance between glyphs - used as a fallback...
-  chars = string.letters + string.digits + string.punctuation
+  chars = string.ascii_letters + string.digits + string.punctuation
   
   diffs = glyph_db.diff(chars, chars, False)
   if len(diffs)==0: mean = gap
@@ -312,7 +317,7 @@ def layout_flow(layout, original_sd = 10.0, offset_sd = 5.0, use_rf = False, com
   
   # Get center_y values for each glyph...
   y_offset = numpy.zeros(len(layout), dtype=numpy.float32)
-  for i in xrange(len(layout)):
+  for i in range(len(layout)):
     if layout[i] is not None:
       cx, cy = layout[i][1].get_center()
       y_offset[i] = cy
@@ -322,7 +327,7 @@ def layout_flow(layout, original_sd = 10.0, offset_sd = 5.0, use_rf = False, com
   solver.unary(slice(None), y_offset, original_sd**(-2.0))
   
   # Add in the pairwise terms - they only exist when we have ligatures on both of the glyphs (We have softening when the ligatures match poorly, as we get two estimates and add the difference between them to the sd)...
-  for i in xrange(len(layout)-1):
+  for i in range(len(layout)-1):
     if layout[i] is None or layout[i+1] is None:
       continue
   
@@ -339,7 +344,7 @@ def layout_flow(layout, original_sd = 10.0, offset_sd = 5.0, use_rf = False, com
   # Duplicate the input and update the homographies with the offsets from the model...
   ret = list(layout)
   
-  for i in xrange(len(layout)):
+  for i in range(len(layout)):
     if ret[i] is not None:
       offset = numpy.eye(3, dtype=numpy.float32)
       offset[1,2] += solver.result(i)[0] - y_offset[i]
@@ -375,7 +380,7 @@ def stitch_connect(glyph_layout, soft = True, half = False, pair_base = 0):
       
   # Now loop through and identify all pairs that can be stitched together, and stitch them...
   pair_code = 0
-  for i in xrange(len(glyph_layout)-1):
+  for i in range(len(glyph_layout)-1):
     # Can't stitch spaces...
     if glyph_layout[i] is not None and glyph_layout[i+1] is not None:
       l_hg, l_glyph = glyph_layout[i]
@@ -429,8 +434,10 @@ def combine_seperate(lg_layout):
 
 
 
-def render(lg, border = 8, textures = TextureCache(), cleverness = 0, radius_growth = 3.0, stretch_weight = 0.5, edge_weight = 0.5, smooth_weight = 2.0, alpha_weight = 1.0, unary_mult = 1.0, overlap_weight = 0.0, use_linear = True):
+def render(lg, border = 8, textures = TextureCache(), cleverness = 0, radius_growth = 3.0, stretch_weight = 0.5, edge_weight = 0.5, smooth_weight = 2.0, alpha_weight = 1.0, unary_mult = 1.0, overlap_weight = 0.0, use_linear = True, profile = None):
   """Given a line_graph this will render it, returning a numpy array that represents an image (As the first element in a tuple - second element is how many graph cut problems it solved.). It will transform the entire linegraph to obtain a suitable border. The cleverness parameter indicates how it merges the many bits - 0 means last layer (stupid), 1 means averaging; 2 selecting a border using max flow; 3 using graph cuts to take into account weight as well."""
+
+  render_started = time.perf_counter()
 
   # Setup the compositor...
   comp = Composite()
@@ -464,19 +471,20 @@ def render(lg, border = 8, textures = TextureCache(), cleverness = 0, radius_gro
   # Break the lg into segments, as each can have its own image - draw & paint each in turn...
   lg.segment()
   duplicate_sets = dict()
+  phase_started = time.perf_counter()
 
-  for s in xrange(lg.segments):
+  for s in range(lg.segments):
 
     slg = LineGraph()
     slg.from_segment(lg, s)
     part = comp.draw_line_graph(slg, radius_growth, stretch_weight)
     
     done = False
-    fn = filter(lambda t: t[0].startswith('texture:'), slg.get_tags())
+    fn = [t for t in slg.get_tags() if t[0].startswith('texture:')]
     if len(fn)!=0: fn = fn[0][0][len('texture:'):]
     else: fn = None
     
-    for pair in filter(lambda t: t[0].startswith('duplicate:'), slg.get_tags()):
+    for pair in [t for t in slg.get_tags() if t[0].startswith('duplicate:')]:
       key = pair[0][len('duplicate:'):]
       if key in duplicate_sets: duplicate_sets[key].append(part)
       else: duplicate_sets[key] = [part]
@@ -493,16 +501,20 @@ def render(lg, border = 8, textures = TextureCache(), cleverness = 0, radius_gro
     if not done:
       comp.paint_test_pattern(part)
 
+  paint_finished = time.perf_counter()
+
   
   # Bias towards pixels that are opaque...
   comp.inc_weight_alpha(alpha_weight)
+  alpha_finished = time.perf_counter()
   
   # Arrange for duplicate pairs to have complete overlap, by adding transparent pixels, so graph cuts doesn't create a feather effect...
   if overlap_weight>1e-6:
-    for values in duplicate_sets.itervalues():
+    for values in duplicate_sets.values():
       for i, part1 in enumerate(values):
         for part2 in values[i:]:
           comp.draw_pair(part1, part2, overlap_weight)
+  overlap_finished = time.perf_counter()
   
   # If requested use maxflow to find optimal cuts, to avoid any real blending...
   count = 0
@@ -510,11 +522,27 @@ def render(lg, border = 8, textures = TextureCache(), cleverness = 0, radius_gro
     count = comp.maxflow_select(edge_weight, smooth_weight, maxflow)
   elif cleverness==3:
     count = comp.graphcut_select(edge_weight, smooth_weight, unary_mult, maxflow)
+  blend_finished = time.perf_counter()
   
   if cleverness==0:
     render = comp.render_last()
   else:
     render = comp.render_average()
+
+  render_finished = time.perf_counter()
+  if profile is not None:
+    profile.update({
+      'segments': lg.segments,
+      'canvas_width': comp.width,
+      'canvas_height': comp.height,
+      'setup_seconds': phase_started - render_started,
+      'draw_paint_seconds': paint_finished - phase_started,
+      'alpha_seconds': alpha_finished - paint_finished,
+      'overlap_seconds': overlap_finished - alpha_finished,
+      'blend_seconds': blend_finished - overlap_finished,
+      'output_seconds': render_finished - blend_finished,
+      'total_seconds': render_finished - render_started,
+    })
 
   # Return the rendered image (If cleverness==0 this will actually do some averaging, otherwise it will just create an image)...
   return render, count

@@ -563,5 +563,5 @@ int DataMatrix_Max(DataMatrix * this, int feature)
 
 void Setup_DataMatrix(void)
 {
- import_array();  
+ if (_import_array()<0) return;
 }

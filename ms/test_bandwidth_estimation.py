@@ -12,10 +12,10 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -60,7 +60,7 @@ numpy.random.shuffle(data)
 dim = 512
 image = numpy.zeros((dim, dim, 3), dtype=numpy.float32)
 
-for r in xrange(data.shape[0]):
+for r in range(data.shape[0]):
   loc = data[r,:]
   loc = (loc + size) / (2.0*size)
   loc *= dim
@@ -92,26 +92,26 @@ def scale_loo_nll():
 # Iterate and try out a bunch of different algorithms...
 for name, alg in [('human_picked', lambda: ms.set_scale(numpy.array([5.0, 5.0]))), ('Silverman',ms.scale_silverman), ('Scott', ms.scale_scott), ('loo_nll', scale_loo_nll)]:
   # Calculate and print out the scales...
-  print '<', name, '>'
+  print('<', name, '>')
   alg()
-  print 'Scale:', ms.get_scale()
-  print 'loo nll for this scale =', ms.loo_nll()
+  print('Scale:', ms.get_scale())
+  print('loo nll for this scale =', ms.loo_nll())
   mean, sd = ms.stats()
-  print 'mean = (%f, %f); sd = (%f, %f)'%(mean[0], mean[1], sd[0], sd[1])
+  print('mean = (%f, %f); sd = (%f, %f)'%(mean[0], mean[1], sd[0], sd[1]))
   
   # Render out a normalised probability map...
   image = numpy.zeros((dim, dim, 3), dtype=numpy.float32)
   
   p = ProgBar()
-  for row in xrange(dim):
+  for row in range(dim):
     p.callback(row, dim)
     sam = numpy.append(numpy.linspace(-size, size, dim).reshape((-1,1)), ((row / (dim-1.0) - 0.5) * 2.0 * size) * numpy.ones(dim).reshape((-1,1)), axis=1)
     image[row, :, :] = ms.probs(sam).reshape((-1,1))
   del p
   
-  print 'Largest sampled probability =', image.max()
+  print('Largest sampled probability =', image.max())
   image *= 255.0 / image.max()
   
   image = array2cv(image)
   cv.SaveImage('bandwidth_%s.png'%name, image)
-  print
+  print()

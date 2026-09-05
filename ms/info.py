@@ -12,64 +12,64 @@
 
 # Simple script that prints out all kernels/spatials/balls that the code supports...
 
-import ms
+from . import ms
 
 
 
-print 'Kernels:'
+print('Kernels:')
 for kernel in ms.MeanShift.kernels():
-  print '  >%s' % kernel
+  print('  >%s' % kernel)
   
   d = ms.MeanShift.info(kernel)
-  for i in xrange(0, len(d), 60):
-    print '    %s' % d[i:i+60].strip()
-  print
+  for i in range(0, len(d), 60):
+    print('    %s' % d[i:i+60].strip())
+  print()
   
   c = ms.MeanShift.info_config(kernel)
   if c==None:
-    print '    Kernel does not require configuring'
+    print('    Kernel does not require configuring')
   else:
-    print '    Requires configuration:'
-    for i in xrange(0, len(c), 60):
-      print '    %s' % c[i:i+60].strip()
-  print
+    print('    Requires configuration:')
+    for i in range(0, len(c), 60):
+      print('    %s' % c[i:i+60].strip())
+  print()
 
 
 
-print
-print 'Spatial:'
+print()
+print('Spatial:')
 for spatial in ms.MeanShift.spatials():
-  print '  >%s' % spatial
+  print('  >%s' % spatial)
   
   d = ms.MeanShift.info(spatial)
-  for i in xrange(0, len(d), 60):
-    print '    %s' % d[i:i+60].strip()
-  print
+  for i in range(0, len(d), 60):
+    print('    %s' % d[i:i+60].strip())
+  print()
 
 
   
-print
-print 'Balls:'
+print()
+print('Balls:')
 for ball in ms.MeanShift.balls():
-  print '  >%s' % ball
+  print('  >%s' % ball)
   
   d = ms.MeanShift.info(ball)
-  for i in xrange(0, len(d), 60):
-    print '    %s' % d[i:i+60].strip()
-  print
+  for i in range(0, len(d), 60):
+    print('    %s' % d[i:i+60].strip())
+  print()
 
 
 
-print
-print 'Converters:'
+print()
+print('Converters:')
 for code in ms.MeanShift.converters():
   info = ms.MeanShift.converter(code)
-  print '  >%s' % info['name']
-  print '   code = %s' % info['code']
-  print '   external dimensions = %i' % info['external']
-  print '   internal dimensions = %i' % info['internal']
+  print('  >%s' % info['name'])
+  print('   code = %s' % info['code'])
+  print('   external dimensions = %i' % info['external'])
+  print('   internal dimensions = %i' % info['internal'])
   
   d = info['description']
-  for i in xrange(0, len(d), 60):
-    print '    %s' % d[i:i+60].strip()
-  print
+  for i in range(0, len(d), 60):
+    print('    %s' % d[i:i+60].strip())
+  print()

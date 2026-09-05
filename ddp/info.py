@@ -9,13 +9,13 @@
 
 
 
-from ddp import DDP
+from .ddp import DDP
 
 
 
 for name in DDP.names():
-  print '%s:' % name
+  print('%s:' % name)
   
   desc = DDP.description(name)
-  for i in xrange(0, len(desc), 60):
-    print '    %s' % desc[i:i+60].strip()
+  for i in range(0, len(desc), 60):
+    print('    %s' % desc[i:i+60].strip())

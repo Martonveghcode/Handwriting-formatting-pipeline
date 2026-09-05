@@ -399,7 +399,7 @@ int Tree_init(Tree * this)
    }
   }
   
-  if (offset>this->size)
+  if ((long long)offset>this->size)
   {
    free(this->index);
    this->index = NULL;
@@ -408,7 +408,7 @@ int Tree_init(Tree * this)
   }
  }
  
- if (offset!=this->size)
+ if ((long long)offset!=this->size)
  {
   free(this->index);
   this->index = NULL;
@@ -550,5 +550,5 @@ const float * Tree_importance(Tree * this, int * length)
 
 void Setup_Tree(void)
 {
- import_array();  
+ if (_import_array()<0) return;
 }

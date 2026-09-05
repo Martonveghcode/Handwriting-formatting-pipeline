@@ -14,10 +14,10 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -58,7 +58,7 @@ data_a[:,2] = numpy.random.normal(size=samples)
 data_a[:,:3] /= numpy.sqrt(numpy.square(data_a[:,:3]).sum(axis=1))[:,numpy.newaxis]
 data_a[:,:3] *= 4.0
 
-for i in xrange(samples):
+for i in range(samples):
   data_a[i,3:] = to_origin(data_a[i,:3])
 
 
@@ -70,7 +70,7 @@ data_b[:,2] = 0
 data_b[:,:3] /= numpy.sqrt(numpy.square(data_b[:,:3]).sum(axis=1))[:,numpy.newaxis]
 data_b[:,:3] *= 4.0
 
-for i in xrange(samples):
+for i in range(samples):
   data_b[i,3:] = to_origin(data_b[i,:3])
 
 
@@ -117,7 +117,7 @@ def to_ply(fn, samples):
   f.write('end_header\n')
   
   # Add the vertices...
-  for i in xrange(samples.shape[0]):
+  for i in range(samples.shape[0]):
     base = numpy.array([1,0,0], dtype=numpy.float32)
     ang = numpy.sqrt(numpy.square(samples[i,3:]).sum())
     axis = samples[i,3:] / ang if ang>1e-6 else base
@@ -143,7 +143,7 @@ def to_ply(fn, samples):
     f.write('%f %f %f\n' % tuple(tail))
   
   # Add the edges...
-  for i in xrange(samples.shape[0]):
+  for i in range(samples.shape[0]):
     f.write('%i %i\n' % (i*5, i*5+1))
     f.write('%i %i\n' % (i*5+1, i*5+2))
     f.write('%i %i\n' % (i*5+2, i*5+3))

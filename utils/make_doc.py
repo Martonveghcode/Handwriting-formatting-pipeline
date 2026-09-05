@@ -13,18 +13,18 @@
 
 
 
-import cvarray
-import mp_map
-import prog_bar
-import numpy_help_cpp
-import python_obj_cpp
-import matrix_cpp
-import gamma_cpp
-import setProcName
-import start_cpp
-import make
+from . import cvarray
+from . import mp_map
+from . import prog_bar
+from . import numpy_help_cpp
+from . import python_obj_cpp
+from . import matrix_cpp
+from . import gamma_cpp
+from . import setProcName
+from . import start_cpp
+from . import make
 
-import doc_gen
+from . import doc_gen
 
 
 

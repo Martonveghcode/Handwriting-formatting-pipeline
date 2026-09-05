@@ -10,7 +10,7 @@
 import numpy
 from scipy.misc import imsave
 
-from tps import TPS
+from .tps import TPS
 
 
 

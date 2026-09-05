@@ -8,14 +8,14 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 import numpy
-from binary_label import BinaryLabel
+from .binary_label import BinaryLabel
 
 
 
 
 
 for true_cost in [3.0, 7.0]:
-  print 'True Cost = %.1f' % true_cost
+  print('True Cost = %.1f' % true_cost)
   
   bl = BinaryLabel((5,))
 
@@ -27,10 +27,10 @@ for true_cost in [3.0, 7.0]:
   bl.fix(fix)
   
   assignment, cost = bl.solve()
-  print '  Cost = %.1f' % cost
+  print('  Cost = %.1f' % cost)
   
-  print '  ',
-  for x in xrange(5):
-    print 'T ' if assignment[x] else 'F ',
-  print
-  print
+  print('  ', end=' ')
+  for x in range(5):
+    print('T ' if assignment[x] else 'F ', end=' ')
+  print()
+  print()

@@ -26,6 +26,7 @@
 typedef struct Colour Colour;
 typedef struct Pixel Pixel;
 typedef struct PixelBlock PixelBlock;
+typedef struct PartBounds PartBounds;
 typedef struct Composite Composite;
 
 
@@ -67,6 +68,18 @@ struct PixelBlock
 
 
 
+// Inclusive image-space bounds for one rendered part.
+struct PartBounds
+{
+ int valid;
+ int min_x;
+ int max_x;
+ int min_y;
+ int max_y;
+};
+
+
+
 // Actual structure that represents this data structure in python...
 struct Composite
 {
@@ -77,8 +90,20 @@ struct Composite
  
  Pixel ** data; // Height major, singularly linked list at every location.
  
- PixelBlock * storage; // Storage for the actual Pixel objects, to save on a billion small allocations. Blocks are height*width sized.
+ PixelBlock * storage; // Storage for the actual Pixel objects, to save on a billion small allocations.
  Pixel * new_pixel; // Linked list of unused pixels.
+
+ // Pixels touched by the most recently drawn part. Paint operations normally
+ // immediately follow drawing, so this avoids rescanning the entire page for
+ // every glyph/segment.
+ size_t * active_pixels;
+ size_t active_count;
+ size_t active_capacity;
+ int active_part;
+
+ // Per-part bounds let overlap preparation scan only relevant regions.
+ PartBounds * part_bounds;
+ size_t part_capacity;
  
  Colour bg; // Default background colour.
  

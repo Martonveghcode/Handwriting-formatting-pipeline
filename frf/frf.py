@@ -13,14 +13,14 @@ import bz2
 
 
 try:
-  from utils.make import make_mod
+  from .utils.make import make_mod
   import os.path
 
-  make_mod('frf_c', os.path.dirname(__file__), ['philox.h', 'philox.c', 'data_matrix.h', 'data_matrix.c', 'summary.h', 'summary.c', 'information.h', 'information.c', 'learner.h', 'learner.c', 'index_set.h', 'index_set.c', 'tree.h', 'tree.c', 'frf_c.h', 'frf_c.c'], numpy=True)
+  make_mod('frf_c', os.path.dirname(__file__), ['py_compat.h', 'philox.h', 'philox.c', 'data_matrix.h', 'data_matrix.c', 'summary.h', 'summary.c', 'information.h', 'information.c', 'learner.h', 'learner.c', 'index_set.h', 'index_set.c', 'tree.h', 'tree.c', 'frf_c.h', 'frf_c.c'], numpy=True)
 except: pass
 
 
-from frf_c import *
+from .frf_c import *
 
 
 
@@ -29,7 +29,7 @@ def save_forest(fn, forest):
   f = bz2.BZ2File(fn, 'w')
   f.write(forest.save())
   
-  for i in xrange(len(forest)):
+  for i in range(len(forest)):
     f.write(forest[i]) # The Tree objects returned by forest[i] have the memoryview interface, so write knows what to do!
   
   f.close()
@@ -50,7 +50,7 @@ def load_forest(fn):
   trees = ret.load(head)
   
   # Each tree in return...
-  for _ in xrange(trees):
+  for _ in range(trees):
     header = f.read(Tree.head_size())
     size = Tree.size_from_head(header)
     

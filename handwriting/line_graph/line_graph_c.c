@@ -127,7 +127,7 @@ static void LineGraph_clear_py(LineGraph * self)
 static void LineGraph_dealloc_py(LineGraph * self)
 {
  LineGraph_dealloc(self);
- self->ob_type->tp_free((PyObject*)self);
+ Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 
@@ -546,14 +546,14 @@ static PyObject * LineGraph_from_many_py(LineGraph * self, PyObject * args)
      // A numpy array - hopefully a 3x3 homography...
       PyArrayObject * arr = (PyArrayObject*)targ;
       
-      if ((arr->nd!=2)||(arr->dimensions[0]!=3)||(arr->dimensions[1]!=3))
+      if ((PyArray_NDIM(arr)!=2)||(PyArray_DIM(arr, 0)!=3)||(PyArray_DIM(arr, 1)!=3))
       {
        PyErr_SetString(PyExc_TypeError, "Homographies must be 3x3.");
        error = 1;
        break;
       }
       
-      if ((arr->descr->kind!='f')||((arr->descr->elsize!=sizeof(float))&&(arr->descr->elsize!=sizeof(double))))
+      if ((PyArray_TYPE(arr)!=NPY_FLOAT32)&&(PyArray_TYPE(arr)!=NPY_FLOAT64))
       {
        PyErr_SetString(PyExc_TypeError, "Homographies must use either 32 or 64 bit floating point numbers.");
        error = 1;
@@ -564,7 +564,7 @@ static PyObject * LineGraph_from_many_py(LineGraph * self, PyObject * args)
       memcpy(orig, hg, 9 * sizeof(float));
       
       int or, oc, ip;
-      if (arr->descr->elsize==sizeof(float))
+      if (PyArray_TYPE(arr)==NPY_FLOAT32)
       {
        for (or=0; or<3; or++)
        {
@@ -841,68 +841,68 @@ static PyObject * LineGraph_from_mask_py(LineGraph * self, PyObject * args)
   if (!PyArg_ParseTuple(args, "O!|O!O!O!", &PyArray_Type, &mask, &PyArray_Type, &radius, &PyArray_Type, &density, &PyArray_Type, &weight)) return NULL;
 
  // Verify the arrays are suitable...
-  if ((mask->nd!=2)||((radius!=NULL)&&(radius->nd!=2))||((density!=NULL)&&(density->nd!=2))||((weight!=NULL)&&(weight->nd!=2)))
+  if ((PyArray_NDIM(mask)!=2)||((radius!=NULL)&&(PyArray_NDIM(radius)!=2))||((density!=NULL)&&(PyArray_NDIM(density)!=2))||((weight!=NULL)&&(PyArray_NDIM(weight)!=2)))
   {
    PyErr_SetString(PyExc_TypeError, "All input arrays must be 2D");
    return NULL;
   }
 
-  if (((radius!=NULL)&&((radius->dimensions[0]!=mask->dimensions[0])||(radius->dimensions[1]!=mask->dimensions[1]))) || ((density!=NULL)&&((density->dimensions[0]!=mask->dimensions[0])||(density->dimensions[1]!=mask->dimensions[1]))) || ((weight!=NULL)&&((weight->dimensions[0]!=weight->dimensions[0])||(weight->dimensions[1]!=weight->dimensions[1]))))
+  if (((radius!=NULL)&&((PyArray_DIM(radius, 0)!=PyArray_DIM(mask, 0))||(PyArray_DIM(radius, 1)!=PyArray_DIM(mask, 1)))) || ((density!=NULL)&&((PyArray_DIM(density, 0)!=PyArray_DIM(mask, 0))||(PyArray_DIM(density, 1)!=PyArray_DIM(mask, 1)))) || ((weight!=NULL)&&((PyArray_DIM(weight, 0)!=PyArray_DIM(mask, 0))||(PyArray_DIM(weight, 1)!=PyArray_DIM(mask, 1)))))
   {
    PyErr_SetString(PyExc_TypeError, "All input arrays must have the same sizes");
    return NULL;
   }
 
-  if (mask->descr->kind!='b' || mask->descr->elsize!=sizeof(char))
+  if (PyArray_TYPE(mask)!=NPY_BOOL)
   {
    PyErr_SetString(PyExc_TypeError, "mask must be of boolean type.");
    return NULL;
   }
 
-  if ((radius!=NULL)&&(radius->descr->kind!='f' || radius->descr->elsize!=sizeof(float)))
+  if ((radius!=NULL)&&(PyArray_TYPE(radius)!=NPY_FLOAT32))
   {
    PyErr_SetString(PyExc_TypeError, "radius must be a 32 bit float.");
    return NULL;
   }
 
-  if ((density!=NULL)&&(density->descr->kind!='f' || density->descr->elsize!=sizeof(float)))
+  if ((density!=NULL)&&(PyArray_TYPE(density)!=NPY_FLOAT32))
   {
    PyErr_SetString(PyExc_TypeError, "density must be a 32 bit float.");
    return NULL;
   }
   
-  if ((weight!=NULL)&&(weight->descr->kind!='f' ||weight->descr->elsize!=sizeof(float)))
+  if ((weight!=NULL)&&(PyArray_TYPE(weight)!=NPY_FLOAT32))
   {
    PyErr_SetString(PyExc_TypeError, "weight must be a 32 bit float.");
    return NULL;
   }
 
-  if ((radius!=NULL)&&(radius->strides[0]!=(sizeof(float)*radius->dimensions[1])))
+  if ((radius!=NULL)&&(PyArray_STRIDE(radius, 0)!=(npy_intp)(sizeof(float)*PyArray_DIM(radius, 1))))
   {
    PyErr_SetString(PyExc_TypeError, "radius is not tightly packed.");
    return NULL;
   }
 
-  if ((density!=NULL)&&(density->strides[0]!=(sizeof(float)*density->dimensions[1])))
+  if ((density!=NULL)&&(PyArray_STRIDE(density, 0)!=(npy_intp)(sizeof(float)*PyArray_DIM(density, 1))))
   {
    PyErr_SetString(PyExc_TypeError, "density is not tightly packed.");
    return NULL;
   }
   
-  if ((weight!=NULL)&&(weight->strides[0]!=(sizeof(float)*weight->dimensions[1])))
+  if ((weight!=NULL)&&(PyArray_STRIDE(weight, 0)!=(npy_intp)(sizeof(float)*PyArray_DIM(weight, 1))))
   {
    PyErr_SetString(PyExc_TypeError, "weight is not tightly packed.");
    return NULL;
   }
 
  // Extract the required pointers...
-  char * mask_ptr = (char*)(void*)mask->data;
-  float * radius_ptr = (radius!=NULL) ? (float*)(void*)radius->data : NULL;
-  float * density_ptr = (density!=NULL) ? (float*)(void*)density->data : NULL;
-  float * weight_ptr = (weight!=NULL) ? (float*)(void*)weight->data : NULL;
+  char * mask_ptr = (char*)PyArray_DATA(mask);
+  float * radius_ptr = (radius!=NULL) ? (float*)PyArray_DATA(radius) : NULL;
+  float * density_ptr = (density!=NULL) ? (float*)PyArray_DATA(density) : NULL;
+  float * weight_ptr = (weight!=NULL) ? (float*)PyArray_DATA(weight) : NULL;
 
  // Call through to the C method that does the work...
-  LineGraph_from_mask(self, mask->dimensions[1], mask->dimensions[0], mask_ptr, radius_ptr, density_ptr, weight_ptr);
+  LineGraph_from_mask(self, PyArray_DIM(mask, 1), PyArray_DIM(mask, 0), mask_ptr, radius_ptr, density_ptr, weight_ptr);
 
  // Return None...
   Py_INCREF(Py_None);
@@ -2571,7 +2571,7 @@ static PyObject * LineGraph_vertex_to_edges_py(LineGraph * self, PyObject * args
 
 
 
-void LineGraph_add_split_tag(LineGraph * this, Edge * e, float t, char * tag)
+void LineGraph_add_split_tag(LineGraph * this, Edge * e, float t, const char * tag)
 {
  SplitTag * nst = (SplitTag*)malloc(sizeof(SplitTag));
  
@@ -2590,7 +2590,7 @@ void LineGraph_add_split_tag(LineGraph * this, Edge * e, float t, char * tag)
  this->segments = -1;
 }
 
-void LineGraph_add_link(LineGraph * this, Edge * a, float ta, Edge * b, float tb, char * tag)
+void LineGraph_add_link(LineGraph * this, Edge * a, float ta, Edge * b, float tb, const char * tag)
 {
  if (a==b) return; // I am not coding for this kind of craziness.
  
@@ -3949,7 +3949,7 @@ static PyObject * LineGraph_pos_py(LineGraph * self, PyObject * args)
   if (!PyArg_ParseTuple(args, "|O!", &PyArray_Type, &hg)) return NULL;
   
  // Verify it is a suitable homography...
-  if ((hg!=NULL)&&((hg->nd!=2)||(hg->dimensions[0]!=3)||(hg->dimensions[1]!=3)||(hg->descr->kind!='f')||(hg->descr->elsize!=sizeof(float))))
+  if ((hg!=NULL)&&((PyArray_NDIM(hg)!=2)||(PyArray_DIM(hg, 0)!=3)||(PyArray_DIM(hg, 1)!=3)||(PyArray_TYPE(hg)!=NPY_FLOAT32)))
   {
    PyErr_SetString(PyExc_TypeError, "Homography must be a 3x3 matrix of 32 bit floats.");
    return NULL;
@@ -4281,14 +4281,14 @@ static PyObject * LineGraph_transform_py(LineGraph * self, PyObject * args)
   int drad = PyObject_IsTrue(do_radius);
   
  // Verify it is a suitable array...
-  if ((hg->nd!=2)||(hg->dimensions[0]!=3)||(hg->dimensions[1]!=3)||(hg->descr->kind!='f'))
+  if ((PyArray_NDIM(hg)!=2)||(PyArray_DIM(hg, 0)!=3)||(PyArray_DIM(hg, 1)!=3)||((PyArray_TYPE(hg)!=NPY_FLOAT32)&&(PyArray_TYPE(hg)!=NPY_FLOAT64)))
   {
    PyErr_SetString(PyExc_TypeError, "Homography must be a 3x3 real matrix.");
    return NULL;
   }
   
  // Do the operation, if we can...
-  if (hg->descr->elsize==sizeof(float))
+  if (PyArray_TYPE(hg)==NPY_FLOAT32)
   {
    float packed[9];
    int r,c;
@@ -4301,7 +4301,7 @@ static PyObject * LineGraph_transform_py(LineGraph * self, PyObject * args)
   }
   else
   {
-   if (hg->descr->elsize==sizeof(double))
+   if (PyArray_TYPE(hg)==NPY_FLOAT64)
    {
     double packed[9];
     int r,c;
@@ -5882,45 +5882,15 @@ static PyMethodDef LineGraph_methods[] =
 
 static PyTypeObject LineGraphType =
 {
- PyObject_HEAD_INIT(NULL)
- 0,                                /*ob_size*/
- "line_graph_c.LineGraph",         /*tp_name*/
- sizeof(LineGraph),                /*tp_basicsize*/
- 0,                                /*tp_itemsize*/
- (destructor)LineGraph_dealloc_py, /*tp_dealloc*/
- 0,                                /*tp_print*/
- 0,                                /*tp_getattr*/
- 0,                                /*tp_setattr*/
- 0,                                /*tp_compare*/
- 0,                                /*tp_repr*/
- 0,                                /*tp_as_number*/
- 0,                                /*tp_as_sequence*/
- 0,                                /*tp_as_mapping*/
- 0,                                /*tp_hash */
- 0,                                /*tp_call*/
- 0,                                /*tp_str*/
- 0,                                /*tp_getattro*/
- 0,                                /*tp_setattro*/
- 0,                                /*tp_as_buffer*/
- Py_TPFLAGS_DEFAULT,               /*tp_flags*/
- "Provides a graph, with 2D coordinates attached, so it can be visualised and interacted with in terms of nearest point/intersection/region. Each vertex has a location, radius and density attached, and they are connected together by edges. Uses a winged half-edge structure. Includes the ability to tag locations with text strings, split edges (Without actually splitting them - it can be undone.) and link otherwise disparate parts. Edge splits define subgraphs, which can be extracted to get another LineGraph, getting all tags etc. Links back to the original LineGraph are included. File i/o is also supported, alongside the ability to build a line graph from various sources and smooth it as needed, plus lots of other capabilities.", /* tp_doc */
- 0,                                /* tp_traverse */
- 0,                                /* tp_clear */
- 0,                                /* tp_richcompare */
- 0,                                /* tp_weaklistoffset */
- 0,                                /* tp_iter */
- 0,                                /* tp_iternext */
- LineGraph_methods,                /* tp_methods */
- LineGraph_members,                /* tp_members */
- 0,                                /* tp_getset */
- 0,                                /* tp_base */
- 0,                                /* tp_dict */
- 0,                                /* tp_descr_get */
- 0,                                /* tp_descr_set */
- 0,                                /* tp_dictoffset */
- 0,                                /* tp_init */
- 0,                                /* tp_alloc */
- LineGraph_new_py,                 /* tp_new */
+ PyVarObject_HEAD_INIT(NULL, 0)
+ .tp_name = "line_graph_c.LineGraph",
+ .tp_basicsize = sizeof(LineGraph),
+ .tp_dealloc = (destructor)LineGraph_dealloc_py,
+ .tp_flags = Py_TPFLAGS_DEFAULT,
+ .tp_doc = "Provides a graph, with 2D coordinates attached, so it can be visualised and interacted with in terms of nearest point/intersection/region.",
+ .tp_methods = LineGraph_methods,
+ .tp_members = LineGraph_members,
+ .tp_new = LineGraph_new_py,
 };
 
 
@@ -5932,17 +5902,31 @@ static PyMethodDef line_graph_c_methods[] =
 
 
 
-#ifndef PyMODINIT_FUNC
-#define PyMODINIT_FUNC void
-#endif
-
-PyMODINIT_FUNC initline_graph_c(void)
+static struct PyModuleDef line_graph_c_module =
 {
- PyObject * mod = Py_InitModule3("line_graph_c", line_graph_c_methods, "Provides a data structure for representing a 2D graph of lines with lots of attached information.");
- import_array();
+ PyModuleDef_HEAD_INIT,
+ "line_graph_c",
+ "Provides a data structure for representing a 2D graph of lines with lots of attached information.",
+ -1,
+ line_graph_c_methods
+};
 
- if (PyType_Ready(&LineGraphType) < 0) return;
+PyMODINIT_FUNC PyInit_line_graph_c(void)
+{
+ PyObject * mod;
+
+ import_array();
+ if (PyType_Ready(&LineGraphType) < 0) return NULL;
+ mod = PyModule_Create(&line_graph_c_module);
+ if (mod==NULL) return NULL;
  
  Py_INCREF(&LineGraphType);
- PyModule_AddObject(mod, "LineGraph", (PyObject*)&LineGraphType);
+ if (PyModule_AddObject(mod, "LineGraph", (PyObject*)&LineGraphType) < 0)
+ {
+  Py_DECREF(&LineGraphType);
+  Py_DECREF(mod);
+  return NULL;
+ }
+
+ return mod;
 }

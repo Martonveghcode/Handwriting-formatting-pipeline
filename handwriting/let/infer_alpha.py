@@ -13,7 +13,7 @@ try:
 except ImportError:
   import weave
 
-from utils.start_cpp import start_cpp
+from .utils.start_cpp import start_cpp
 
 
 

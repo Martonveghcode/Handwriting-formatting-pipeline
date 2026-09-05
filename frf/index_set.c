@@ -157,5 +157,5 @@ void IndexView_split(IndexView * this, DataMatrix * dm, char test_code, void * t
 
 void Setup_IndexSet(void)
 {
- import_array();  
+ if (_import_array()<0) return;
 }

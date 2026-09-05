@@ -132,7 +132,7 @@ for fn in os.listdir(args.directory):
   ## Compress the data matrix down, to remove duplicates...
   index = numpy.lexsort(data.T)
   data = data[index,:]
-  keep = numpy.ones(data.shape[0], dtype=numpy.bool)
+  keep = numpy.ones(data.shape[0], dtype=bool)
   keep[1:] = (numpy.diff(data, axis=0)!=0).any(axis=1)
   data = data[keep]
 

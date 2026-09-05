@@ -15,10 +15,10 @@ import numpy
 import numpy.random
 
 import cv
-from utils.cvarray import *
-from utils.prog_bar import ProgBar
+from .utils.cvarray import *
+from .utils.prog_bar import ProgBar
 
-from ms import MeanShift
+from .ms import MeanShift
 
 
 
@@ -85,7 +85,7 @@ for ind, ds in enumerate(data):
     e_x = (size-1) * (sample[1] + angle_len * sample[3]) / scale
     e_y = (size-1) * (sample[0] + angle_len * sample[2]) / scale
   
-    for i in xrange(angle_step):
+    for i in range(angle_step):
       t = float(i) / (angle_step-1)
       t_x = int(t * s_x + (1-t) * e_x)
       t_y = int(t * s_y + (1-t) * e_y)
@@ -105,7 +105,7 @@ ms = MeanShift()
 ms.set_data(numpy.zeros((64, 4), numpy.float32), 'df')
 ms.copy_all(kde[0])
 
-print 'Multiplying...'
+print('Multiplying...')
 p = ProgBar()
 MeanShift.mult(kde, ms.get_dm())
 del p
@@ -123,7 +123,7 @@ for sample in ms.get_dm():
   e_x = (size-1) * (sample[1] + angle_len * sample[3]) / scale
   e_y = (size-1) * (sample[0] + angle_len * sample[2]) / scale
   
-  for i in xrange(angle_step):
+  for i in range(angle_step):
     try:
       t = float(i) / (angle_step-1)
       t_x = int(t * s_x + (1-t) * e_x)
@@ -140,14 +140,14 @@ for sample in ms.get_dm():
 modes, _ = ms.cluster()
 
 for ii, sample in enumerate(modes):
-  print 'mode %i: position = (%.3f, %.3f), direction = (%.3f,%.3f)' % (ii, sample[0], sample[1], sample[2], sample[3])
+  print('mode %i: position = (%.3f, %.3f), direction = (%.3f,%.3f)' % (ii, sample[0], sample[1], sample[2], sample[3]))
   s_x = (size-1) * sample[1] / scale
   s_y = (size-1) * sample[0] / scale
   e_x = (size-1) * (sample[1] + angle_len * sample[3]) / scale
   e_y = (size-1) * (sample[0] + angle_len * sample[2]) / scale
   
   
-  for i in xrange(angle_step):
+  for i in range(angle_step):
     try:
       t = float(i) / (angle_step-1)
       t_x = int(t * s_x + (1-t) * e_x)

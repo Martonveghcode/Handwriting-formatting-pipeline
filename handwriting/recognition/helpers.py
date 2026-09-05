@@ -77,7 +77,7 @@ def closest(runs, params):
 
 def modes(runs, distance = 2):
   """Given the runs, in index mode, returns all of the ones that are modes - i.e. no run within distance (manhatten) has a better score. Not very efficient, but I am lazy and its not like this is going to get that high."""
-  keep = numpy.ones(len(runs), numpy.bool)
+  keep = numpy.ones(len(runs), bool)
   
   for i in xrange(len(runs)):
     for j in xrange(i+1, len(runs)):

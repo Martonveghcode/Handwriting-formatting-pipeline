@@ -12,6 +12,7 @@
 
 import pydoc
 import inspect
+from functools import reduce
 
 
 
@@ -161,7 +162,7 @@ class DocGen:
     
       arg_str = ''
       if len(args)!=0:
-        arg_str += reduce(lambda a, b: '%s, %s'%(a,b), map(lambda arg, d: arg if d==None else '%s = %s'%(arg,d), args, defaults))
+        arg_str += reduce(lambda a, b: '%s, %s'%(a,b), list(map(lambda arg, d: arg if d==None else '%s = %s'%(arg,d), args, defaults)))
       
       if varargs!=None:
         arg_str += ', *%s'%varargs if arg_str!='' else '*%s'%varargs
@@ -182,12 +183,12 @@ class DocGen:
     self.html_classes += '\n'
     
     name = cls.__name__
-    parents = filter(lambda a: a!=cls, inspect.getmro(cls))
+    parents = [a for a in inspect.getmro(cls) if a!=cls]
     doc = inspect.getdoc(cls)
     
     par_str = ''
     if len(parents)!=0:
-      par_str += reduce(lambda a, b: '%s, %s'%(a,b), map(lambda p: p.__name__, parents))
+      par_str += reduce(lambda a, b: '%s, %s'%(a,b), [p.__name__ for p in parents])
     
     self.wiki_classes += '### %s(%s)\n'%(name, par_str)
     self.wiki_classes += '%s\n\n'%doc
@@ -215,7 +216,7 @@ class DocGen:
     
         arg_str = ''
         if len(args)!=0:
-          arg_str += reduce(lambda a, b: '%s, %s'%(a,b), map(lambda arg, d: arg if d==None else '%s = %s'%(arg,d), args, defaults))
+          arg_str += reduce(lambda a, b: '%s, %s'%(a,b), list(map(lambda arg, d: arg if d==None else '%s = %s'%(arg,d), args, defaults)))
       
         if varargs!=None:
           arg_str += ', *%s'%varargs if arg_str!='' else '*%s'%varargs
@@ -228,7 +229,7 @@ class DocGen:
             if method.__doc__!=None: return inspect.getdoc(method)
           except: pass
           
-          for parent in filter(lambda a: a!=cls, inspect.getmro(cls)):
+          for parent in [a for a in inspect.getmro(cls) if a!=cls]:
             ret = fetch_doc(parent, name)
             if ret!=None: return ret
             
