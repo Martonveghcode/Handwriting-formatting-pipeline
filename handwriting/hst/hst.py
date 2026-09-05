@@ -587,6 +587,16 @@ class HST(Gtk.Window):
       return
       
     generation_started = time.perf_counter()
+    phase_time = {
+      'selection': 0.0,
+      'positioning': 0.0,
+      'flow': 0.0,
+      'joining': 0.0,
+      'assembly': 0.0,
+      'style': 0.0,
+      'render': 0.0,
+      'display': 0.0,
+    }
     print('Starting generation...')
     buf = self.text.get_buffer()
     txt = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False).split('\n')
@@ -595,6 +605,7 @@ class HST(Gtk.Window):
     for i in range(len(txt)):
       if len(txt[i])==0: continue
       print('L%i::Selecting Glyphs...'%(i+1))
+      phase_started = time.perf_counter()
       
       fetch_count = self.fetch_count.get_value()
       match_strength = self.match_strength.get_value()
@@ -615,9 +626,11 @@ class HST(Gtk.Window):
       else:
         cfunc = costs.end_dist_cost_rf if self.transfer_adj_cost.get_active() else costs.end_dist_cost
         glyph_list = select_glyphs_dp(txt[i], self.glyph_db, fetch_count, match_strength, wrong_place_cost, space_mult, cfunc, True)
+      phase_time['selection'] += time.perf_counter() - phase_started
     
     
       print('L%i::Positioning Glyphs...'%(i+1))
+      phase_started = time.perf_counter()
       
       default_gap = self.default_gap.get_value()
       default_gap_space = self.default_gap_space.get_value()
@@ -634,23 +647,29 @@ class HST(Gtk.Window):
         glyph_layout = layout_median(glyph_list, self.glyph_db, space_param)
       else:
         glyph_layout = layout_draw(glyph_list, self.glyph_db, space_param, amount)
+      phase_time['positioning'] += time.perf_counter() - phase_started
       
       
       if self.flow_gbp.get_active():
         print('L%i::Adjusting flow (vertical offset)...'%(i+1))
+        phase_started = time.perf_counter()
         pos_sd = self.flow_pos_sd.get_value()
         offset_sd = self.flow_offset_sd.get_value()
         glyph_layout = layout_flow(glyph_layout, pos_sd, offset_sd, self.flow_gbp_rf.get_active(), self.flow_gbp_cp.get_active())
+        phase_time['flow'] += time.perf_counter() - phase_started
     
     
       print('L%i::Joining up Glyphs...'%(i+1))
+      phase_started = time.perf_counter()
       if self.link_type.get_active()==0:
         lg_layout = stitch_noop(glyph_layout)
       else:
         lg_layout = stitch_connect(glyph_layout, self.link_type.get_active()==2, not self.chunk_db.empty(), i)
+      phase_time['joining'] += time.perf_counter() - phase_started
     
     
       print('L%i::Combining to obtain final line...'%(i+1))
+      phase_started = time.perf_counter()
       line = combine_seperate(lg_layout)
     
     
@@ -661,17 +680,22 @@ class HST(Gtk.Window):
       line.transform(hg, True)
       
       lines.append(line)
+      phase_time['assembly'] += time.perf_counter() - phase_started
     
     
+    phase_started = time.perf_counter()
     self.line = LineGraph()
     self.line.from_many(*lines)
+    phase_time['assembly'] += time.perf_counter() - phase_started
     
     if not self.chunk_db.empty():
       print('::Changing pen style...')
+      phase_started = time.perf_counter()
       
       self.chunk_db.set_params(int(self.chunk_samples.get_value()), self.chunk_direction.get_value(), self.chunk_radius.get_value(), self.chunk_density.get_value())
       
       self.line = self.chunk_db.convert(self.line, int(self.chunk_choices.get_value()), self.chunk_adv_match.get_active(), self.textures, int(self.chunk_memory.get_value()))
+      phase_time['style'] += time.perf_counter() - phase_started
     
     print('::Recording to image...')
     
@@ -685,8 +709,12 @@ class HST(Gtk.Window):
     linear = self.render_linear.get_active()
     
     render_profile = {}
+    phase_started = time.perf_counter()
     image, count = render(self.line, 8, self.textures, self.blending.get_active(), blend_radius, blend_stretch, blend_edge, blend_smooth, blend_alpha, blend_unary, blend_overlap, linear, render_profile)
+    phase_time['render'] += time.perf_counter() - phase_started
+    phase_started = time.perf_counter()
     self.image.from_array(image)
+    phase_time['display'] += time.perf_counter() - phase_started
     
     if count!=0: print('  |Solved %i min cut problems'%count)
     
@@ -696,7 +724,12 @@ class HST(Gtk.Window):
     print('Texture cache: {entries} entries, {bytes:.1f} MiB, {hits} hits, {misses} misses, {evictions} evictions'.format(
       entries=cache['entries'], bytes=cache['bytes'] / 1024.0**2,
       hits=cache['hits'], misses=cache['misses'], evictions=cache['evictions']))
-    print('Generation complete in %.3fs' % (time.perf_counter() - generation_started))
+    generation_total = time.perf_counter() - generation_started
+    print(('Generation timing: selection={selection:.3f}s, positioning={positioning:.3f}s, '
+           'flow={flow:.3f}s, joining={joining:.3f}s, assembly={assembly:.3f}s, '
+           'style={style:.3f}s, render={render:.3f}s, display={display:.3f}s, total={total:.3f}s').format(
+      total=generation_total, **phase_time))
+    print('Generation complete in %.3fs' % generation_total)
     self.viewer.reset_view()
     self.__line_visible(self.action_show_line)
 

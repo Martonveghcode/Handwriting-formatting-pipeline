@@ -3695,7 +3695,11 @@ void HalfEdge_feature(FeatureSpec * fs, HalfEdge * targ, float weight, float dis
       }
       
      // Select a random one to grab...
-      float r = drand48();
+     float r;
+     #pragma omp critical(line_graph_feature_rng)
+     {
+      r = drand48();
+     }
       float sub = 1.0 / count;
      
      // Go select it...
@@ -3873,15 +3877,24 @@ static PyObject * LineGraph_features_py(LineGraph * self, PyObject * args, PyObj
     }
    }
   
- // Calculate the features for each vertex in turn...
+ // Calculate the features for each vertex in turn. This section only reads
+ // the LineGraph and writes the freshly allocated numpy buffer, so releasing
+ // the GIL lets independent glyphs calculate their features concurrently.
+  int feature_count = PyArray_DIMS(feats)[1];
+  int feature_vertices = PyArray_DIMS(feats)[0];
+  npy_intp feature_stride = PyArray_STRIDE(feats, 0) / sizeof(float);
+  float * feature_data = (float*)PyArray_DATA(feats);
+  Py_BEGIN_ALLOW_THREADS
   int vert;
-  for (vert=0; vert<PyArray_DIMS(feats)[0]; vert++)
+  for (vert=0; vert<feature_vertices; vert++)
   {
+   float * vert_out = feature_data + vert * feature_stride;
+
    // Zero the output to start with...
     int feat;
-    for (feat=0; feat<PyArray_DIMS(feats)[1]; feat++)
+    for (feat=0; feat<feature_count; feat++)
     {
-     *(float*)PyArray_GETPTR2(feats, vert, feat) = 0.0;
+     vert_out[feat] = 0.0;
     }
    
    // Run the paths and sum them into the feature vector - once for each half edge leaving the vertex...
@@ -3910,7 +3923,7 @@ static PyObject * LineGraph_features_py(LineGraph * self, PyObject * args, PyObj
        fs.oy /= o_len;
       
        // Follow the graph and factor in the vectors into this feature vector...
-        HalfEdge_feature(&fs, targ, 1.0, 0.0, rec_depth, (float*)PyArray_GETPTR2(feats, vert, 0));
+       HalfEdge_feature(&fs, targ, 1.0, 0.0, rec_depth, vert_out);
       }
      
      // To next half edge...
@@ -3920,18 +3933,19 @@ static PyObject * LineGraph_features_py(LineGraph * self, PyObject * args, PyObj
     
    // Normalise, and apply the sqrt trick as its a histogram and we care about the distance between them...
     float sum = 0.0;
-    for (feat=0; feat<PyArray_DIMS(feats)[1]; feat++)
+    for (feat=0; feat<feature_count; feat++)
     {
-     sum += *(float*)PyArray_GETPTR2(feats, vert, feat);
+     sum += vert_out[feat];
     }
     
     if (sum<1e-6) sum = 1e-6;
-    for (feat=0; feat<PyArray_DIMS(feats)[1]; feat++)
+    for (feat=0; feat<feature_count; feat++)
     {
-     float * targ = (float*)PyArray_GETPTR2(feats, vert, feat);
+     float * targ = vert_out + feat;
      *targ = sqrt(*targ / sum);
     }
   }
+  Py_END_ALLOW_THREADS
   
  // Clean up...
   free(bin_stuff);

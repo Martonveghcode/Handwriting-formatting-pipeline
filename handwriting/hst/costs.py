@@ -13,6 +13,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy
 
 # Global used by rf cost method - simply so it doesn't have to reload the random forest each time...
@@ -130,6 +133,104 @@ def end_dist_cost_rf(left_g, right_g, mass_weight = 1.0):
   ret += mass_weight * dr_diff.sum()
   
   return ret
+
+
+
+def _end_dist_cost_rf_matrices(glyph_pairs):
+  """Vectorised RF pair costs for dynamic-programming transitions.
+
+  Feature construction intentionally stays in the original row-major order,
+  so lazy glyph feature caches and any legacy feature randomness are populated
+  exactly as they were by repeated end_dist_cost_rf calls. The expensive
+  forest traversal is then performed once for the entire line.
+  """
+  global cost_proxy
+  if cost_proxy==None:
+    cost_proxy = _load_frf().load_forest('cost_proxy.rf')
+
+  # Feature extraction is the largest remaining first-run cost. Every glyph
+  # owns its feature cache and LineGraph, so distinct glyphs can safely run in
+  # parallel; the native feature calculation releases the GIL while working.
+  pending = []
+  pending_ids = set()
+  for left_glyphs, right_glyphs in glyph_pairs:
+    for left_g in left_glyphs:
+      for right_g in right_glyphs:
+        joined_up = (left_g.right is not None and
+                     len(left_g.right[1])!=0 and
+                     right_g.left is not None and
+                     len(right_g.left[1])!=0)
+        if not joined_up:
+          for glyph in (left_g, right_g):
+            if glyph.feat is None and id(glyph) not in pending_ids:
+              pending_ids.add(id(glyph))
+              pending.append(glyph)
+
+  try:
+    workers = max(1, int(os.environ.get('OMP_NUM_THREADS', '1')))
+  except ValueError:
+    workers = 1
+  workers = min(workers, len(pending))
+  if workers>1:
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='glyph-feature') as executor:
+      list(executor.map(lambda glyph: glyph.get_feat(), pending))
+  else:
+    for glyph in pending:
+      glyph.get_feat()
+
+  ret = [numpy.empty((len(left_glyphs), len(right_glyphs)), dtype=numpy.float32)
+         for left_glyphs, right_glyphs in glyph_pairs]
+  predict_at = []
+  predict_feat = []
+
+  for matrix, (left_glyphs, right_glyphs) in enumerate(glyph_pairs):
+    for j, left_g in enumerate(left_glyphs):
+      for i, right_g in enumerate(right_glyphs):
+        joined_up = (left_g.right is not None and
+                     len(left_g.right[1])!=0 and
+                     right_g.left is not None and
+                     len(right_g.left[1])!=0)
+
+        if joined_up:
+          # This path does not invoke the forest, so retain the existing exact
+          # link-distance implementation for these comparatively rare pairs.
+          ret[matrix][j,i] = end_dist_cost_rf(left_g, right_g)
+        else:
+          predict_at.append((matrix, j, i))
+          predict_feat.append(glyph_pair_feat(left_g, right_g))
+
+          dr_diff = numpy.fabs(left_g.get_mass() - right_g.get_mass())
+          ret[matrix][j,i] = dr_diff.sum()
+
+  if len(predict_at)!=0:
+    feat = numpy.asarray(predict_feat, dtype=numpy.float32)
+    predicted = cost_proxy.predict(feat)[0]['mean']
+    for (matrix, j, i), value in zip(predict_at, predicted):
+      ret[matrix][j,i] += value
+
+  return ret
+
+
+def glyph_pair_cost_matrices(glyph_pairs, cost_func):
+  """Calculate adjacency matrices, batching a whole line when supported."""
+  if len(glyph_pairs)==0:
+    return []
+  if cost_func is end_dist_cost_rf:
+    return _end_dist_cost_rf_matrices(glyph_pairs)
+
+  ret = []
+  for left_glyphs, right_glyphs in glyph_pairs:
+    matrix = numpy.empty((len(left_glyphs), len(right_glyphs)), dtype=numpy.float32)
+    for j, left_g in enumerate(left_glyphs):
+      for i, right_g in enumerate(right_glyphs):
+        matrix[j,i] = cost_func(left_g, right_g)
+    ret.append(matrix)
+  return ret
+
+
+def glyph_pair_cost_matrix(left_glyphs, right_glyphs, cost_func):
+  """Calculate a complete adjacency matrix, batching when supported."""
+  return glyph_pair_cost_matrices([(left_glyphs, right_glyphs)], cost_func)[0]
 
 
 

@@ -37,6 +37,14 @@ class Spacing:
         id_right = id(glyph.right[0])
         
         self.db.append((id_left, key_left, space, key_right, id_right))
+
+    # These arrays back the legacy behaviour of __weight (which returns a
+    # uniform weight). Keeping them once avoids rebuilding and rescanning the
+    # entire training database for every pair of output glyphs.
+    self.values = numpy.asarray([entry[2] for entry in self.db])
+    self.unit_weights = numpy.ones(len(self.db))
+    self.space_values = numpy.asarray([entry[2] for entry in self.db
+                                       if entry[1].endswith('_') and entry[3].startswith('_')])
     
     # Default weights...
     self.set_weights()
@@ -158,28 +166,16 @@ class Spacing:
   
   def draw_space(self, amount = 0.5):
     """Same as median space, but with a bit of noise, in the same style as the draw method for normal spacing."""
-    nums = []
-    for entry in self.db:
-      if entry[1].endswith('_') and entry[3].startswith('_'):
-        nums.append(entry[2])
-    if len(nums)==0: return 0.6
+    if self.space_values.shape[0]==0: return 0.6
     
-    return self.__weighted_draw(nums, [1.0]*len(nums), amount)
+    return self.__weighted_draw(self.space_values, numpy.ones(self.space_values.shape[0]), amount)
     
     
   def median(self, left, right):
     """Returns the weighted median of the dataset, where the weights have been adjusted for the provided glyph pair."""
-    
-    values = [e[2] for e in self.db]
-    weights = [self.__weight(e, left, right) for e in self.db]
-    
-    return self.__weighted_median(values, weights)
+    return self.__weighted_median(self.values, self.unit_weights)
 
     
   def draw(self, left, right, amount = 0.5):
     """Same as median, except it treats the values as defining a probability distribution, and draws from the middle amount (parameter) of the weight mass. Basically adds some noise, without the risk of sampling outliers."""
-    
-    value = [e[2] for e in self.db]
-    weight = [self.__weight(e, left, right) for e in self.db]
-    
-    return self.__weighted_draw(value, weight, amount)
+    return self.__weighted_draw(self.values, self.unit_weights, amount)

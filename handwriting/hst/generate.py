@@ -41,6 +41,24 @@ from gbp.gbp import GBP
 
 
 
+def _candidate_glyphs(glyph_db, key, fetch_count):
+  """Return at most fetch_count candidates while retaining top-up priority.
+
+  GlyphDB.topup_glyph deliberately returns every exact match before adding
+  fallbacks. That was harmless for the original tiny training sets, but it
+  makes the pairwise dynamic-programming cost quadratic in the number of
+  imported samples and effectively ignores the GUI's selection-set-size
+  control. Sample here (rather than in GlyphDB) so callers that genuinely
+  need every matching glyph keep the old API.
+  """
+  glyphs = glyph_db.topup_glyph(key, fetch_count)
+  limit = max(1, int(fetch_count))
+  if len(glyphs) > limit:
+    return random.sample(glyphs, limit)
+  return glyphs
+
+
+
 def select_glyphs_random(text, glyph_db, log_func = None):
   """Given some text selects the glyphs to glue together to generate the text; returns an array of Glyph objects, one for each character, with None entries to indicate where spaces go. Glyph selection is entirly random, and ignores word position."""
   
@@ -70,7 +88,7 @@ def select_glyphs_better_random(text, glyph_db, fetch_count = 8, log_func = None
       space_after = True if i+1==len(text) or text[i+1] in string.whitespace else False
       
       key = ('_' if space_before else '') + text[i] + ('_' if space_after else '')
-      glyphs = glyph_db.topup_glyph(key, fetch_count)
+      glyphs = _candidate_glyphs(glyph_db, key, fetch_count)
       
       if len(glyphs)!=0:
         ret.append(random.choice(glyphs))
@@ -94,7 +112,7 @@ def select_glyphs_dp(text, glyph_db, fetch_count = 8, match_mult = 1.0, poor_fit
       space_after = True if i+1==len(text) or text[i+1] in string.whitespace else False
       
       key = ('_' if space_before else '') + text[i] + ('_' if space_after else '')
-      glyphs = glyph_db.topup_glyph(key, fetch_count)
+      glyphs = _candidate_glyphs(glyph_db, key, fetch_count)
       
       if len(glyphs)!=0:
         choice.append(glyphs)
@@ -122,8 +140,8 @@ def select_glyphs_dp(text, glyph_db, fetch_count = 8, match_mult = 1.0, poor_fit
         data += numpy.log(-numpy.log(numpy.random.rand(data.shape[0]))) # Gumbel noise
   
   # Third pass - calculate adjacency cost matrices for each glyph...
-  smooth_term = []
-  
+  smooth_pairs = []
+  smooth_mult = []
   prev = None
   mult = match_mult
   for current in choice:
@@ -131,17 +149,15 @@ def select_glyphs_dp(text, glyph_db, fetch_count = 8, match_mult = 1.0, poor_fit
     else:
       # Calculate the cost matrix between this glyph stack and the previous stack...
       if prev is not None:
-        cost = numpy.empty((len(prev), len(current)), dtype=numpy.float32)
-        
-        for j, left in enumerate(prev):
-          for i, right in enumerate(current):
-            cost[j,i] = mult * cost_func(left, right)
-        
-        smooth_term.append(cost)
+        smooth_pairs.append((prev, current))
+        smooth_mult.append(mult)
       
       # Move to next...
       prev = current
       mult = match_mult
+
+  smooth_term = [mult * matrix for mult, matrix in zip(
+    smooth_mult, costs.glyph_pair_cost_matrices(smooth_pairs, cost_func))]
 
   # Setup the dp solver...
   dp = DDP()

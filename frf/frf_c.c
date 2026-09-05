@@ -1203,34 +1203,44 @@ static PyObject * Forest_predict_py(Forest * self, PyObject * args)
   {
    // All exemplars...
    // Create required objects...
-    IndexSet * is = IndexSet_new(x->exemplars);
-    
     if (self->ss_size<self->trees*x->exemplars)
     {
      self->ss_size = self->trees*x->exemplars;
      self->ss = realloc(self->ss, self->ss_size * sizeof(SummarySet*));
     }
    
-   // Find the leaves the exemplars fall into...
+   // Initialise tree indices serially because failure reporting uses the
+   // Python API. Once ready, traversal is read-only and trees are independent.
     int i;
     for (i=0; i<self->trees; i++)
     {
      if (self->tree[i]->ready==0)
      {
-      Tree_init(self->tree[i]->tree);
-      self->tree[i]->ready = 1; 
+      if (Tree_init(self->tree[i]->tree)==0)
+      {
+       DataMatrix_delete(x);
+       return NULL;
+      }
+      self->tree[i]->ready = 1;
      }
-     
-     IndexSet_init_all(is);
-     
-     Tree_run_many(self->tree[i]->tree, x, is, self->ss + i, self->trees);
+    }
+
+   // Find the leaves for each tree in parallel. Each traversal owns its
+   // scratch index set and writes a disjoint strided slice of self->ss.
+    long long predict_work = (long long)self->trees * x->exemplars;
+    #pragma omp parallel for if(predict_work >= 4096) schedule(dynamic, 1)
+    for (i=0; i<self->trees; i++)
+    {
+     IndexSet * tree_is = IndexSet_new(x->exemplars);
+     IndexSet_init_all(tree_is);
+     Tree_run_many(self->tree[i]->tree, x, tree_is, self->ss + i, self->trees);
+     IndexSet_delete(tree_is);
     }
    
    // Convert into a return value...
     PyObject * ret = SummarySet_merge_many_py(x->exemplars, self->trees, self->ss);
    
    // Clean up and return...
-    IndexSet_delete(is);
     DataMatrix_delete(x);
     return ret;
   }
