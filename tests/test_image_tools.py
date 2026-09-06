@@ -8,6 +8,7 @@ from mtyh.logic.image_tools import (
     cm_to_px,
     detect_and_connect_image,
     process_single_image,
+    process_stitch_export,
     remove_yellow_pixels,
     stitch_images,
 )
@@ -80,3 +81,23 @@ def test_process_single_image_can_repeat_in_one_session(tmp_path: Path) -> None:
 
 def test_export_mode_values_are_stable() -> None:
     assert ExportMode.PDF.value == "pdf"
+
+
+def test_streaming_pdf_export_deletes_sources_only_after_success(tmp_path: Path) -> None:
+    sources = []
+    for index in range(3):
+        source = tmp_path / f"source {index}.png"
+        Image.new("RGB", (120, 80), "white").save(source)
+        sources.append(source)
+    output = tmp_path / "result.pdf"
+
+    process_stitch_export(
+        sources,
+        output,
+        ExportMode.PDF,
+        ImageProcessingSettings(connect_lines=False, remove_yellow=False, dpi=72),
+        delete_originals=True,
+    )
+
+    assert output.read_bytes().startswith(b"%PDF")
+    assert not any(path.exists() for path in sources)

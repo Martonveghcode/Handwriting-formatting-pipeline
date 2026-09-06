@@ -5,12 +5,16 @@ from pathlib import Path
 
 project_root = Path(SPECPATH)
 icon_file = project_root / "mtyh" / "resources" / "text formater.ico"
+batch_adapter = project_root / "mtyh" / "synthesis" / "hst_batch.py"
 
 a = Analysis(
     ["mtyh\\__main__.py"],
     pathex=[str(project_root)],
     binaries=[],
-    datas=[(str(icon_file), "mtyh\\resources")],
+    datas=[
+        (str(icon_file), "mtyh\\resources"),
+        (str(batch_adapter), "mtyh\\synthesis"),
+    ],
     hiddenimports=["keyboard", "pyautogui"],
     hookspath=[],
     hooksconfig={},
@@ -19,6 +23,13 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+# Qt deliberately imports Windows' system ICU shim.  A Poppler runtime can put
+# incompatible generic ICU DLLs on PATH during collection; bundling those makes
+# QtGui fail at startup with "procedure could not be found".
+a.binaries = [
+    entry for entry in a.binaries
+    if Path(entry[0]).name.casefold() not in {"icuuc.dll", "icudt78.dll"}
+]
 pyz = PYZ(a.pure)
 
 exe = EXE(

@@ -17,6 +17,9 @@ LOGGER = logging.getLogger(__name__)
 
 
 def default_config() -> dict[str, Any]:
+    desktop = Path.home() / "moodle-proxy" / "Desktop"
+    if not desktop.is_dir():
+        desktop = Path.home() / "Desktop"
     return {
         "output_dir": str(default_output_dir()),
         "formatter": {
@@ -52,6 +55,16 @@ def default_config() -> dict[str, Any]:
             "initial_delay_seconds": 2.0,
             "toggle_hotkey": "F8",
             "step_hotkey": "F9",
+        },
+        "auto": {
+            "image_prefix": "",
+            "pdf_name": "",
+            "image_output_dir": str(desktop / "output images" / "AUTO"),
+            "pdf_output_dir": str(desktop / "for printing" / "AUTO"),
+            "wsl_distro": "Ubuntu",
+            "hst_dir": "/home/marton/helit/handwriting/hst",
+            "line_graph_dir": "/home/marton/trainingdata",
+            "terminate_wsl": True,
         },
         "window": {
             "width": 1280,
