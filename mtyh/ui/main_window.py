@@ -51,6 +51,7 @@ from PySide6.QtWidgets import (
 
 from mtyh.logic.config_store import ConfigStore
 from mtyh.logic.config_store import default_config
+from mtyh.logic.auto_pipeline import run_auto_pipeline
 from mtyh.logic.image_tools import (
     ExportMode,
     ImageProcessingSettings,
@@ -73,11 +74,15 @@ from mtyh.logic.text_formatter import (
     split_formatted_sections,
 )
 from mtyh.paths import default_output_dir, icon_path, logs_dir
-from mtyh.workers import FunctionWorker
+from mtyh.workers import FunctionWorker, ProgressFunctionWorker
 
 LOGGER = logging.getLogger(__name__)
 
 TaskRunner = Callable[[Callable[..., Any], Callable[[Any], None], Callable[[str], None], Any], None]
+ProgressTaskRunner = Callable[
+    [Callable[..., Any], Callable[[Any], None], Callable[[str], None], Callable[[str], None], Any],
+    None,
+]
 
 PALETTE_PRESETS: dict[str, tuple[str, str, str, str]] = {
     "Midnight Slate": ("#0c1821", "#1d2d44", "#f0ebd8", "#ccc9dc"),
@@ -1408,6 +1413,169 @@ class ImageToolsPage(QWidget):
         }
 
 
+class AutoPage(QWidget):
+    settings_changed = Signal()
+
+    def __init__(
+        self,
+        config: dict[str, Any],
+        status: Callable[[str], None],
+        run_task: ProgressTaskRunner,
+        formatter_page: ModernTextFormatterPage,
+        image_page: ImageToolsPage,
+    ) -> None:
+        super().__init__()
+        self.config = config
+        self.status = status
+        self.run_task = run_task
+        self.formatter_page = formatter_page
+        self.image_page = image_page
+        self._build()
+        self.load_config()
+
+    def _build(self) -> None:
+        root = QVBoxLayout(self)
+        root.setContentsMargins(22, 20, 22, 20)
+        root.setSpacing(14)
+
+        title = QLabel("AUTO")
+        title.setProperty("class", "pageTitle")
+        explanation = QLabel(
+            "Paste the original text. AUTO uses the current Text Formatter and Stitch Export settings, "
+            "loads every handwriting example, generates each section invisibly, creates the PDF, and "
+            "removes the temporary page images after a successful export."
+        )
+        explanation.setProperty("class", "muted")
+        explanation.setWordWrap(True)
+        root.addWidget(title)
+        root.addWidget(explanation)
+
+        names_box = group_box("Output Names")
+        names_form = QFormLayout(names_box)
+        self.image_prefix = QLineEdit()
+        self.image_prefix.setPlaceholderText("Example: Spanish")
+        self.pdf_name = QLineEdit()
+        self.pdf_name.setPlaceholderText("Example: Spanish Homework")
+        names_form.addRow("Generated image prefix", self.image_prefix)
+        names_form.addRow("Final PDF name", self.pdf_name)
+        root.addWidget(names_box)
+
+        text_box = group_box("Original Text")
+        text_layout = QVBoxLayout(text_box)
+        self.source_text = QPlainTextEdit()
+        self.source_text.setPlaceholderText("Paste the original, unformatted text here…")
+        self.source_text.setMinimumHeight(300)
+        text_layout.addWidget(self.source_text)
+        root.addWidget(text_box, 1)
+
+        progress_box = QFrame()
+        progress_layout = QVBoxLayout(progress_box)
+        progress_layout.setContentsMargins(0, 0, 0, 0)
+        self.progress_label = QLabel("Ready.")
+        self.progress_label.setProperty("class", "muted")
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 1)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(False)
+        progress_layout.addWidget(self.progress_label)
+        progress_layout.addWidget(self.progress_bar)
+        root.addWidget(progress_box)
+
+        actions = QHBoxLayout()
+        self.run_button = primary_button("Run Automatic Workflow")
+        self.run_button.clicked.connect(self.run)
+        actions.addWidget(self.run_button)
+        actions.addStretch(1)
+        root.addLayout(actions)
+
+        self.image_prefix.textChanged.connect(lambda _text: self.settings_changed.emit())
+        self.pdf_name.textChanged.connect(lambda _text: self.settings_changed.emit())
+
+    def load_config(self) -> None:
+        auto = self.config.get("auto", {})
+        self.image_prefix.setText(str(auto.get("image_prefix", "")))
+        self.pdf_name.setText(str(auto.get("pdf_name", "")))
+
+    def collect_config(self) -> dict[str, Any]:
+        existing = dict(self.config.get("auto", {}))
+        existing.update(
+            {
+                "image_prefix": self.image_prefix.text().strip(),
+                "pdf_name": self.pdf_name.text().strip(),
+            }
+        )
+        return existing
+
+    def run(self) -> None:
+        source = self.source_text.toPlainText()
+        prefix = self.image_prefix.text().strip()
+        pdf_name = self.pdf_name.text().strip()
+        if not source.strip():
+            self.status("Paste source text first.")
+            return
+        if not prefix or not pdf_name:
+            self.status("Enter both output names first.")
+            return
+        if self.formatter_page.min_words.value() > self.formatter_page.max_words.value():
+            QMessageBox.warning(self, "Check line rules", "Min words cannot be greater than max words.")
+            return
+        try:
+            image_settings = self.image_page.stitch_tab.image_settings()
+        except ValueError as exc:
+            QMessageBox.warning(self, "Invalid image settings", str(exc))
+            return
+
+        formatter_settings = self.formatter_page.settings()
+        character_pairs = self.formatter_page.character_pairs()
+        direction = str(self.formatter_page.direction.currentData())
+        auto_config = self.collect_config()
+        self.run_button.setEnabled(False)
+        self.progress_bar.setRange(0, 0)
+        self.progress_label.setText("Formatting source text…")
+        self.status("AUTO workflow started.")
+
+        def progress(message: str) -> None:
+            self.progress_label.setText(message)
+            self.status(message)
+
+        def done(result: Any) -> None:
+            self.run_button.setEnabled(True)
+            self.progress_bar.setRange(0, 1)
+            self.progress_bar.setValue(1)
+            self.progress_label.setText(
+                f"Complete — {result.page_count} page(s) saved to {result.pdf_path.name}."
+            )
+            self.status(f"AUTO complete: {result.pdf_path.name}")
+            QMessageBox.information(
+                self,
+                "AUTO complete",
+                f"Created {result.page_count} page(s).\n\nSaved PDF:\n{result.pdf_path}",
+            )
+
+        def failed(message: str) -> None:
+            self.run_button.setEnabled(True)
+            self.progress_bar.setRange(0, 1)
+            self.progress_bar.setValue(0)
+            self.progress_label.setText("AUTO stopped. Generated images were kept if recovery is possible.")
+            self.status("AUTO workflow failed.")
+            QMessageBox.warning(self, "AUTO failed", message)
+
+        self.run_task(
+            run_auto_pipeline,
+            done,
+            failed,
+            progress,
+            source,
+            prefix,
+            pdf_name,
+            formatter_settings,
+            character_pairs,
+            direction,
+            image_settings,
+            auto_config,
+        )
+
+
 class HotkeyListenerThread(QThread):
     toggle_requested = Signal()
     step_requested = Signal()
@@ -2029,7 +2197,7 @@ class MainWindow(QMainWindow):
         self.config_store = ConfigStore()
         self.config = self.config_store.load()
         self.thread_pool = QThreadPool.globalInstance()
-        self.active_workers: set[FunctionWorker] = set()
+        self.active_workers: set[FunctionWorker | ProgressFunctionWorker] = set()
         self.quick_copy_listener: QuickCopyHotkeyThread | None = None
         self.quick_copy_hotkey_spec: tuple[str, bool] | None = None
         self.save_timer = QTimer(self)
@@ -2086,7 +2254,7 @@ class MainWindow(QMainWindow):
         self.sidebar = QListWidget()
         self.sidebar.setObjectName("sidebar")
         self.sidebar.setFixedWidth(158)
-        for label in ("Text Formatter", "Image Tools", "Training Macro", "Settings"):
+        for label in ("Text Formatter", "AUTO", "Image Tools", "Training Macro", "Settings"):
             item = QListWidgetItem(label)
             item.setSizeHint(QSize(140, 42))
             self.sidebar.addItem(item)
@@ -2097,15 +2265,24 @@ class MainWindow(QMainWindow):
 
         self.text_page = ModernTextFormatterPage(self.config, self.status)
         self.image_page = ImageToolsPage(self.config, self.status, self.start_task)
+        self.auto_page = AutoPage(
+            self.config,
+            self.status,
+            self.start_progress_task,
+            self.text_page,
+            self.image_page,
+        )
         self.macro_page = MacroPage(self.config, self.status, self.start_task, self.save_config)
         self.settings_page = SettingsPage(self.config, self.status, self.start_task)
         self.stack.addWidget(self.text_page)
+        self.stack.addWidget(self.auto_page)
         self.stack.addWidget(self.image_page)
         self.stack.addWidget(self.macro_page)
         self.stack.addWidget(self.settings_page)
         self.sidebar.currentRowChanged.connect(self.stack.setCurrentIndex)
         self.sidebar.setCurrentRow(0)
         self.text_page.settings_changed.connect(self.schedule_save)
+        self.auto_page.settings_changed.connect(self.schedule_save)
         self.image_page.settings_changed.connect(self.schedule_save)
         self.settings_page.settings_changed.connect(self.schedule_save)
         self.settings_page.appearance_changed.connect(self._apply_style)
@@ -2446,11 +2623,33 @@ class MainWindow(QMainWindow):
         worker.signals.finished.connect(release_worker)
         self.thread_pool.start(worker)
 
+    def start_progress_task(
+        self,
+        function: Callable[..., Any],
+        on_result: Callable[[Any], None],
+        on_error: Callable[[str], None],
+        on_progress: Callable[[str], None],
+        *args: Any,
+    ) -> None:
+        worker = ProgressFunctionWorker(function, *args)
+        self.active_workers.add(worker)
+        worker.signals.result.connect(on_result)
+        worker.signals.error.connect(on_error)
+        worker.signals.progress.connect(on_progress)
+
+        def release_worker() -> None:
+            self.active_workers.discard(worker)
+            LOGGER.info("Background task finished; %d task(s) remain", len(self.active_workers))
+
+        worker.signals.finished.connect(release_worker)
+        self.thread_pool.start(worker)
+
     def schedule_save(self, *_: Any) -> None:
         self.save_timer.start()
 
     def save_config(self) -> None:
         self.config["formatter"] = self.text_page.collect_config()
+        self.config["auto"] = self.auto_page.collect_config()
         try:
             self.config["image"] = self.image_page.collect_config()
         except ValueError:
@@ -2496,6 +2695,7 @@ class MainWindow(QMainWindow):
         self.config.update(default_config())
         self.text_page.load_config()
         self.image_page.load_config()
+        self.auto_page.load_config()
         self.macro_page._load_config()
         self.settings_page.load_config()
         hotkeys = self.settings_page.collect_hotkeys()

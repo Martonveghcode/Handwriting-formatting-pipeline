@@ -5,6 +5,8 @@ An extension/pipeline to **“My Text in Your Handwriting”** by Thaines. Inclu
 
 > **MTYH app note:** The repository's tools are also combined into the single Windows desktop app in the `mtyh` folder.
 
+> **AUTO workflow:** The MTYH sidebar now includes an `AUTO` page that formats the original text with the current formatter settings, runs HST headlessly one section at a time, and creates the final printable PDF. Generated page images use the chosen prefix and are removed after a successful PDF export.
+
 > **Note:** This is **not** a full installation guide for the original project. For setup, see:
 > [My Text in Your Handwriting (HELIT)](https://github.com/thaines/helit/tree/master/handwriting#my-text-in-your-handwriting)
 
@@ -125,6 +127,8 @@ inline Edge * HalfToEdge(HalfEdge * half)
    - Import the synthesized images into the **Image → Printable** GUI.
    - Generate printable pages (with guide lines).
    - **Print** the final output.
+
+The manual steps above are still available. For the automated route, open **AUTO** in MTYH, paste the unformatted text, enter an image prefix and final PDF name, then click **Run Automatic Workflow**. AUTO uses the live Text Formatter and Stitch Export settings, loads every `.line_graph` from the configured Examples folder (not Style), saves temporary pages under `output images/AUTO`, and writes the result under `for printing/AUTO`. Zero-overlap PDF exports are streamed page by page to keep large batches substantially lighter on memory.
 ---
 ## Training Paper
 

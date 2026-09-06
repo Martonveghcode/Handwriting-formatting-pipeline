@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import logging
 import os
+import tempfile
 import uuid
 from dataclasses import dataclass
 from enum import Enum
@@ -431,6 +432,147 @@ def pages_to_pdf_bytes(pages: Sequence[Image.Image], dpi: int = 300) -> bytes:
     return buffer.getvalue()
 
 
+def _prepare_source_for_stitch(
+    file_path: Path | str,
+    target_width: int,
+    settings: ImageProcessingSettings,
+) -> Image.Image:
+    """Load and process one source while bounding peak memory to one image."""
+    with Image.open(file_path) as source:
+        source.load()
+        working = source.convert("RGBA")
+    if working.width != target_width:
+        padded = Image.new("RGBA", (target_width, working.height), (255, 255, 255, 0))
+        padded.paste(working, (0, 0))
+        working.close()
+        working = padded
+    if settings.connect_lines:
+        connected = detect_and_connect_image(
+            working,
+            settings.line_thickness,
+            settings.y_tolerance,
+            settings.line_color,
+        )
+        working.close()
+        working = connected
+    if settings.remove_yellow:
+        cleaned = remove_yellow_pixels(working)
+        working.close()
+        working = cleaned
+    else:
+        flattened = flatten_transparency(working)
+        working.close()
+        working = flattened
+    return working
+
+
+def write_paginated_pdf_streaming(
+    file_paths: Sequence[Path | str],
+    output_path: Path | str,
+    settings: ImageProcessingSettings,
+    title: str | None = None,
+) -> None:
+    """Write the zero-overlap PDF path without allocating one giant stitched image.
+
+    Page geometry and source ordering match ``stitch_images`` plus
+    ``generate_pdf_pages``. Guide processing uses the same functions as before,
+    applied to one padded source at a time.
+    """
+    if not file_paths:
+        raise ValueError("No images were supplied.")
+    output_path = Path(output_path)
+    source_meta: list[tuple[Path | str, int, int]] = []
+    for file_path in file_paths:
+        with Image.open(file_path) as image:
+            source_meta.append((file_path, image.width, image.height))
+
+    base_width = max(width for _, width, _ in source_meta)
+    a4_width_px = cm_to_px(21, settings.dpi)
+    a4_height_px = cm_to_px(29.7, settings.dpi)
+    margin_left = cm_to_px(0.4, settings.dpi)
+    margin_right = cm_to_px(0.5, settings.dpi)
+    margin_top = cm_to_px(2.0, settings.dpi)
+    printable_width = a4_width_px - margin_left - margin_right
+    printable_height = a4_height_px - margin_top
+    scale_factor = min(1.0, printable_width / base_width)
+    rendered_width = printable_width if scale_factor < 1.0 else base_width
+
+    scaled_segments: list[tuple[Path | str, int, int]] = []
+    y_offset = 0
+    for file_path, _, height in source_meta:
+        start = int(round(y_offset * scale_factor))
+        y_offset += height
+        end = int(round(y_offset * scale_factor))
+        if end - start > printable_height:
+            raise ValueError("A source image exceeds printable height for a page.")
+        scaled_segments.append((file_path, start, end))
+
+    page_groups: list[list[tuple[Path | str, int, int]]] = []
+    current: list[tuple[Path | str, int, int]] = []
+    page_start = 0
+    for segment in scaled_segments:
+        _, start, end = segment
+        if not current:
+            current = [segment]
+            page_start = start
+        elif end - page_start <= printable_height:
+            current.append(segment)
+        else:
+            page_groups.append(current)
+            current = [segment]
+            page_start = start
+    if current:
+        page_groups.append(current)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="mtyh_pdf_", dir=output_path.parent) as temp_dir:
+        temp_root = Path(temp_dir)
+        page_paths: list[Path] = []
+        for page_index, group in enumerate(page_groups, start=1):
+            canvas = Image.new("RGB", (a4_width_px, a4_height_px), "white")
+            group_start = group[0][1]
+            try:
+                for file_path, start, end in group:
+                    source = _prepare_source_for_stitch(file_path, base_width, settings)
+                    try:
+                        target_height = end - start
+                        if source.size != (rendered_width, target_height):
+                            resized = source.resize(
+                                (rendered_width, target_height),
+                                Image.Resampling.LANCZOS,
+                            )
+                            source.close()
+                            source = resized
+                        canvas.paste(source, (margin_left, margin_top + (start - group_start)))
+                    finally:
+                        source.close()
+                page_path = temp_root / f"page_{page_index:05d}.png"
+                canvas.save(
+                    page_path,
+                    format="PNG",
+                    dpi=(settings.dpi, settings.dpi),
+                    compress_level=1,
+                )
+                page_paths.append(page_path)
+            finally:
+                canvas.close()
+
+        opened_pages = [Image.open(path) for path in page_paths]
+        try:
+            first_page, *remaining_pages = opened_pages
+            first_page.save(
+                output_path,
+                format="PDF",
+                resolution=float(settings.dpi),
+                save_all=True,
+                append_images=remaining_pages,
+                title=title or "Handwriting",
+            )
+        finally:
+            for page in opened_pages:
+                page.close()
+
+
 def load_images(paths: Sequence[Path | str]) -> list[Image.Image]:
     images: list[Image.Image] = []
     for path in paths:
@@ -501,39 +643,46 @@ def process_stitch_export(
     result: Image.Image | None = None
     pages: list[Image.Image] = []
     try:
-        images = load_images(file_paths)
-        result, bounds = stitch_images(images, overlap_px=settings.overlap_px)
-
-        if settings.connect_lines:
-            connected = detect_and_connect_image(
-                result,
-                settings.line_thickness,
-                settings.y_tolerance,
-                settings.line_color,
-            )
-            result.close()
-            result = connected
-        if settings.remove_yellow:
-            cleaned = remove_yellow_pixels(result)
-            result.close()
-            result = cleaned
-
-        if export_mode == ExportMode.PDF:
-            pages = generate_pdf_pages(result, bounds, dpi=settings.dpi)
-            temporary.write_bytes(pages_to_pdf_bytes(pages, dpi=settings.dpi))
-        elif export_mode == ExportMode.A4_PNG:
-            page = prepare_printable_a4(result, dpi=settings.dpi)
-            try:
-                page.save(temporary, format="PNG", dpi=(settings.dpi, settings.dpi))
-            finally:
-                page.close()
+        if export_mode == ExportMode.PDF and int(max(0, settings.overlap_px)) == 0:
+            write_paginated_pdf_streaming(file_paths, temporary, settings, title=output_path.stem)
+            os.replace(temporary, output_path)
+            # The streaming path intentionally skips the giant stitched canvas.
+            result = None
+            images = []
         else:
-            flattened = flatten_transparency(result)
-            try:
-                flattened.save(temporary, format="PNG", dpi=(settings.dpi, settings.dpi))
-            finally:
-                flattened.close()
-        os.replace(temporary, output_path)
+            images = load_images(file_paths)
+            result, bounds = stitch_images(images, overlap_px=settings.overlap_px)
+
+            if settings.connect_lines:
+                connected = detect_and_connect_image(
+                    result,
+                    settings.line_thickness,
+                    settings.y_tolerance,
+                    settings.line_color,
+                )
+                result.close()
+                result = connected
+            if settings.remove_yellow:
+                cleaned = remove_yellow_pixels(result)
+                result.close()
+                result = cleaned
+
+            if export_mode == ExportMode.PDF:
+                pages = generate_pdf_pages(result, bounds, dpi=settings.dpi)
+                temporary.write_bytes(pages_to_pdf_bytes(pages, dpi=settings.dpi))
+            elif export_mode == ExportMode.A4_PNG:
+                page = prepare_printable_a4(result, dpi=settings.dpi)
+                try:
+                    page.save(temporary, format="PNG", dpi=(settings.dpi, settings.dpi))
+                finally:
+                    page.close()
+            else:
+                flattened = flatten_transparency(result)
+                try:
+                    flattened.save(temporary, format="PNG", dpi=(settings.dpi, settings.dpi))
+                finally:
+                    flattened.close()
+            os.replace(temporary, output_path)
     except Exception:
         LOGGER.exception("Stitch export failed for %s", output_path)
         raise
