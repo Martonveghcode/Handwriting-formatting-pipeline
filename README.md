@@ -1,7 +1,7 @@
 
-# Handwriting-formating-pipeline
+# Handwriting-formatting-pipeline
 
-An extension/pipeline to **“My Text in Your Handwriting”** by Thaines. Includes text formatting, limited Unicode→ASCII support, a print-formatting pipeline, and training-data processing macros/utils — plus a recommended training sheet.
+An extension/pipeline to **“My Text in Your Handwriting”** by Tom Haines (`thaines`). Includes text formatting, limited Unicode→ASCII support, a print-formatting pipeline, and training-data processing macros/utils — plus a recommended training sheet.
 
 > **MTYH app note:** The repository's tools are also combined into the single Windows desktop app in the `mtyh` folder.
 
@@ -11,6 +11,21 @@ An extension/pipeline to **“My Text in Your Handwriting”** by Thaines. Inclu
 > [My Text in Your Handwriting (HELIT)](https://github.com/thaines/helit/tree/master/handwriting#my-text-in-your-handwriting)
 
 ---
+
+## Modernized and optimized HELIT/HST source
+
+The complete improved source is available in this repository's [`modern-hst` branch](https://github.com/Martonveghcode/Handwriting-formatting-pipeline/tree/modern-hst). It modernizes the original HELIT handwriting tools for **Ubuntu 24.04/WSL2**, moves the active HST and LET paths from Python 2 to Python 3, and substantially speeds up handwriting line generation and image export.
+
+The optimized compositor processes active pixels instead of repeatedly scanning the entire page, uses bounded allocations and cropped graph-cut workloads, adds OpenMP to suitable page-sized loops, and caches parsed PLY data and textures. On the validated synthetic 5411 × 5168 benchmark, total compositor time fell from **1.695 s to 0.190 s** (8.9× faster), while peak memory fell from **1625 MiB to 362 MiB**. The golden compositor test produced byte-for-byte identical output.
+
+- Read the full technical notes and benchmark in [`MODERNIZATION.txt`](https://github.com/Martonveghcode/Handwriting-formatting-pipeline/blob/modern-hst/MODERNIZATION.txt).
+- Use [`scripts/install_ubuntu24.sh`](https://github.com/Martonveghcode/Handwriting-formatting-pipeline/blob/modern-hst/scripts/install_ubuntu24.sh) for a fresh Ubuntu 24.04 setup.
+- Launch the modern tools with `scripts/launch_synthesis.sh` and `scripts/launch_annotation.sh`, then run `scripts/verify_modern.sh` to verify the installation.
+
+The Ubuntu 20.04/Python 2 notes below are retained as a legacy reference for the original upstream workflow.
+
+---
+
 ## Demo Video
 
 Watch a full demonstration of the handwriting formatting and synthesis pipeline:
@@ -26,7 +41,7 @@ Watch a full demonstration of the handwriting formatting and synthesis pipeline:
 
 
 
-## Quick tips (what worked for me)
+## Legacy Ubuntu 20.04/Python 2 tips (what worked for me)
 
 1. **Ubuntu 20.04.6 LTS (WSL2)** — newer Ubuntu versions gave me issues with GTK/Python2 and inline C compilation.
 2. **Python 2.7** runtime with:
@@ -99,8 +114,8 @@ inline Edge * HalfToEdge(HalfEdge * half)
 
 2. **Clean Scans**
    - Open scans in **GIMP** (or similar).
-   - add guide dots 
-   -  Run Remove yellow filter 2x minimum
+   - Add guide dots.
+   - Run the Remove Yellow Lines filter at least twice.
    
 
 3. **Split Training Data**
@@ -115,7 +130,7 @@ inline Edge * HalfToEdge(HalfEdge * half)
 
 5. **Format Target Text**
    - Open the **Text Formatter**.
-   - Format the text you want to generate
+   - Format the text you want to generate.
 
 6. **Synthesis GUI**
    - Open the **Synthesis GUI**.
@@ -158,7 +173,7 @@ The manual steps above are still available. For the automated route, open **AUTO
    - This clears the guide lines while keeping your handwriting intact.
 
 4. **Run the Macro Cutter**
-   - Launch the macro i provided note(name and counter have to be configured in python file)
+   - Launch the provided macro. Configure its output name and counter in the Python file first.
    - **Cut every two yellow boxes** — each cut should contain **one full line of written text**.
    - Make sure the **black reference dots remain** in the cropped images (used later for alignment).
 
@@ -223,14 +238,14 @@ The manual steps above are still available. For the automated route, open **AUTO
 ---
 
 ### Before
-*(Example of a text generated )*
+*(Example of generated text)*
 
 ![Before processing](assets/msrdc_OteCxpJjiN.png)
 
 ---
 
 ### After
-*(text with added lines and formated)*
+*(Text with added lines and formatting)*
 
 ![After processing](assets/Photos_6iyK9GBKFi.png)
 
