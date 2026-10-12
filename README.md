@@ -12,6 +12,22 @@ An extension/pipeline to **“My Text in Your Handwriting”** by Tom Haines (`t
 
 ---
 
+## Example: Before vs. After Processing
+
+### Before
+*(Example of generated text)*
+
+![Before processing](assets/msrdc_OteCxpJjiN.png)
+
+---
+
+### After
+*(Text with added lines and formatting)*
+
+![After processing](assets/Photos_6iyK9GBKFi.png)
+
+---
+
 ## Modernized and optimized HELIT/HST source
 
 The complete improved source is available in this repository's [`modern-hst` branch](https://github.com/Martonveghcode/Handwriting-formatting-pipeline/tree/modern-hst). It modernizes the original HELIT handwriting tools for **Ubuntu 24.04/WSL2**, moves the active HST and LET paths from Python 2 to Python 3, and substantially speeds up handwriting line generation and image export.
@@ -226,9 +242,7 @@ The manual steps above are still available. For the automated route, open **AUTO
 - Future plan: contribute common accented-letter support (e.g., **à/á/è/é/ñ/ç**) upstream in the main project.
 ---
 
-## Example: Before vs. After Processing
-
-### Current Settings
+## Current Settings
 
 
 ![Raw image 1](assets/settings1.png)  
@@ -237,19 +251,6 @@ The manual steps above are still available. For the automated route, open **AUTO
 
 ---
 
-### Before
-*(Example of generated text)*
-
-![Before processing](assets/msrdc_OteCxpJjiN.png)
-
----
-
-### After
-*(Text with added lines and formatting)*
-
-![After processing](assets/Photos_6iyK9GBKFi.png)
-
----
 ## Ethical Use Note
 
 This project and its extensions are intended **solely for personal, educational, and research use** — for studying handwriting synthesis, data formatting, and text rendering workflows.
