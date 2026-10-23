@@ -265,4 +265,6 @@ The goal is to explore technology creatively and transparently — **not to misl
 
 **Contact:** <mailto:martonvegh2009@gmail.com>
 
+---
 
+Pipeline and modernization work by [Marton Vegh](https://marton.top/). Read the [project case study](https://marton.top/projects/handwriting-formatting-pipeline/).
