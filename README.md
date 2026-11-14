@@ -160,6 +160,19 @@ inline Edge * HalfToEdge(HalfEdge * half)
    - **Print** the final output.
 
 The manual steps above are still available. For the automated route, open **AUTO** in MTYH, paste the unformatted text, enter an image prefix and final PDF name, then click **Run Automatic Workflow**. AUTO uses the live Text Formatter and Stitch Export settings, loads every `.line_graph` from the configured Examples folder (not Style), saves temporary pages under `output images/AUTO`, and writes the result under `for printing/AUTO`. Zero-overlap PDF exports are streamed page by page to keep large batches substantially lighter on memory.
+
+### Local AUTO API
+
+See the [MTYH Local API Guide](docs/MTYH-Local-API-Guide.pdf) for SSH setup, a complete request example, and the endpoint reference.
+
+Run `python -m mtyh.api` from this checkout under the Windows account that runs MTYH. The API listens on `http://127.0.0.1:8765` and reads the same saved settings as the desktop app. Send `Authorization: Bearer <token>` using the token from `%APPDATA%\MTYH\api-token`. `GET /v1/health` is available without authentication.
+
+- Inspect defaults with `GET /v1/settings` and character coverage with `GET /v1/text-format`.
+- Preview raw source with `POST /v1/format` and a JSON object containing `source_text`.
+- Submit `source_text`, `image_prefix`, and `pdf_name` to `POST /v1/jobs`. Optional `image_output_dir` and `pdf_output_dir` override the saved locations for that job.
+- Poll `GET /v1/jobs/{id}?wait=30` until the job succeeds or fails. A successful result includes the Windows PDF path and an authenticated download route.
+- Run `python -m mtyh --api-port 8765` in a desktop session if you want API submissions to populate the visible AUTO fields.
+
 ---
 ## Training Paper
 

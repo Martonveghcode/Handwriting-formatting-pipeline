@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from PySide6.QtCore import QRect, QSize, Qt, QThread, QThreadPool, QTimer, Signal
+from PySide6.QtCore import QRect, QSize, Qt, QThread, QThreadPool, QTimer, Signal, Slot
 from PySide6.QtGui import QAction, QColor, QGuiApplication, QIcon
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -49,8 +49,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from mtyh.logic.config_store import ConfigStore
-from mtyh.logic.config_store import default_config
+from mtyh.logic.config_store import ConfigStore, changed_settings, deep_merge, default_config
 from mtyh.logic.auto_pipeline import run_auto_pipeline
 from mtyh.logic.image_tools import (
     ExportMode,
@@ -1493,17 +1492,32 @@ class AutoPage(QWidget):
 
     def load_config(self) -> None:
         auto = self.config.get("auto", {})
+        self.api_names = None
         self.image_prefix.setText(str(auto.get("image_prefix", "")))
         self.pdf_name.setText(str(auto.get("pdf_name", "")))
 
+    @Slot(dict)
+    def show_api_draft(self, draft: dict[str, str]) -> None:
+        self.source_text.setPlainText(draft["source_text"])
+        self.api_names = {key: (draft[key], value) for key, value in self.output_names().items()}
+        for field, key in ((self.image_prefix, "image_prefix"), (self.pdf_name, "pdf_name")):
+            was_blocked = field.blockSignals(True)
+            field.setText(draft[key])
+            field.blockSignals(was_blocked)
+
+    def output_names(self) -> dict[str, str]:
+        return {
+            "image_prefix": self.image_prefix.text().strip(),
+            "pdf_name": self.pdf_name.text().strip(),
+        }
+
     def collect_config(self) -> dict[str, Any]:
         existing = dict(self.config.get("auto", {}))
-        existing.update(
-            {
-                "image_prefix": self.image_prefix.text().strip(),
-                "pdf_name": self.pdf_name.text().strip(),
-            }
-        )
+        names = self.output_names()
+        for key, (displayed, saved) in (self.api_names or {}).items():
+            if names[key] == displayed.strip():
+                names[key] = saved
+        existing.update(names)
         return existing
 
     def run(self) -> None:
@@ -2229,6 +2243,7 @@ class MainWindow(QMainWindow):
             bool(hotkeys.get("quick_copy_enabled", False)),
         )
         self.status("Ready.")
+        self.saved_controls = self.collect_config()
 
     def _build(self) -> None:
         self.setStatusBar(QStatusBar())
@@ -2647,17 +2662,18 @@ class MainWindow(QMainWindow):
     def schedule_save(self, *_: Any) -> None:
         self.save_timer.start()
 
-    def save_config(self) -> None:
-        self.config["formatter"] = self.text_page.collect_config()
-        self.config["auto"] = self.auto_page.collect_config()
+    def collect_config(self) -> dict[str, Any]:
+        config = dict(self.config)
+        config["formatter"] = self.text_page.collect_config()
+        config["auto"] = self.auto_page.collect_config()
         try:
-            self.config["image"] = self.image_page.collect_config()
+            config["image"] = self.image_page.collect_config()
         except ValueError:
             LOGGER.warning("Image settings contain an incomplete colour; postponing that part of the save")
-        self.config["macro"] = self.macro_page.collect_config()
-        self.config["hotkeys"] = self.settings_page.collect_hotkeys()
-        self.config["appearance"] = self.settings_page.collect_appearance()
-        self.config["window"] = {
+        config["macro"] = self.macro_page.collect_config()
+        config["hotkeys"] = self.settings_page.collect_hotkeys()
+        config["appearance"] = self.settings_page.collect_appearance()
+        config["window"] = {
             "width": self.settings_page.startup_width.value(),
             "height": self.settings_page.startup_height.value(),
             "x": self.x(),
@@ -2665,14 +2681,23 @@ class MainWindow(QMainWindow):
         }
         selected_output = self.image_page.stitch_tab.output_dir.text().strip()
         if selected_output:
-            self.config["output_dir"] = selected_output
-        output_dir = str(self.config.get("output_dir", default_output_dir()))
-        Path(output_dir).mkdir(parents=True, exist_ok=True)
+            config["output_dir"] = selected_output
+        return config
+
+    def save_config(self, *, reset: bool = False) -> None:
+        config = self.collect_config()
         try:
-            self.config_store.save(self.config)
+            Path(config["output_dir"]).mkdir(parents=True, exist_ok=True)
+            if reset:
+                self.config_store.save(config)
+            else:
+                changes = changed_settings(self.saved_controls, config)
+                self.config_store.update(lambda current: deep_merge(current, changes))
         except OSError as exc:
             LOGGER.exception("Could not save settings")
             self.status(f"Could not save settings: {exc}")
+        else:
+            self.saved_controls = config
 
     def apply_window_size(self, width: int, height: int) -> None:
         screen = self.screen() or QGuiApplication.primaryScreen()
@@ -2705,7 +2730,7 @@ class MainWindow(QMainWindow):
         )
         self._apply_style()
         self.apply_window_size(1280, 900)
-        self.save_config()
+        self.save_config(reset=True)
         self.status("All settings were reset to defaults.")
 
     def open_output_folder(self) -> None:
