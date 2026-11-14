@@ -143,7 +143,7 @@ def prepare_printable_a4(image, original_path, dpi=300):
     canvas = Image.new("RGB", (a4_width_px, a4_height_px), "white")
     canvas.paste(img, (margin_left, margin_top))
 
-    desktop_path = os.path.join(os.path.expanduser("~"), "moodle-proxy", "Desktop")
+    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
     output_dir = os.path.join(desktop_path, "for printing")
     os.makedirs(output_dir, exist_ok=True)
 

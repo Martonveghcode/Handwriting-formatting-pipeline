@@ -635,6 +635,8 @@ def process_stitch_export(
     export_mode: ExportMode,
     settings: ImageProcessingSettings,
     delete_originals: bool = False,
+    *,
+    overwrite: bool = True,
 ) -> Path:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -645,7 +647,6 @@ def process_stitch_export(
     try:
         if export_mode == ExportMode.PDF and int(max(0, settings.overlap_px)) == 0:
             write_paginated_pdf_streaming(file_paths, temporary, settings, title=output_path.stem)
-            os.replace(temporary, output_path)
             # The streaming path intentionally skips the giant stitched canvas.
             result = None
             images = []
@@ -682,7 +683,12 @@ def process_stitch_export(
                     flattened.save(temporary, format="PNG", dpi=(settings.dpi, settings.dpi))
                 finally:
                     flattened.close()
+        if overwrite:
             os.replace(temporary, output_path)
+        elif os.name == "nt":
+            temporary.rename(output_path)
+        else:
+            os.link(temporary, output_path)
     except Exception:
         LOGGER.exception("Stitch export failed for %s", output_path)
         raise

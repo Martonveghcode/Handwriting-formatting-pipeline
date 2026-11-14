@@ -27,6 +27,14 @@ def default_output_dir() -> Path:
     return Path.home() / "Desktop" / "for printing"
 
 
+def default_auto_image_dir() -> Path:
+    return Path.home() / "Desktop" / "output images" / "AUTO"
+
+
+def default_auto_pdf_dir() -> Path:
+    return default_output_dir() / "AUTO"
+
+
 def resource_path(*parts: str) -> Path:
     if hasattr(sys, "_MEIPASS"):
         base = Path(sys._MEIPASS) / "mtyh"

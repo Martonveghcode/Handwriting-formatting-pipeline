@@ -7,9 +7,12 @@ import shlex
 import subprocess
 import uuid
 from collections.abc import Callable, Iterable
+from contextlib import ExitStack
 from dataclasses import dataclass
+from functools import wraps
 from pathlib import Path
 
+from mtyh.logic.config_store import default_auto_config, file_lock
 from mtyh.logic.image_tools import ExportMode, ImageProcessingSettings, process_stitch_export
 from mtyh.logic.text_formatter import (
     FormatterSettings,
@@ -40,17 +43,21 @@ class AutoPipelineResult:
     page_count: int
 
 
-def desktop_root() -> Path:
-    proxied = Path.home() / "moodle-proxy" / "Desktop"
-    return proxied if proxied.is_dir() else Path.home() / "Desktop"
+class AutoBusyError(RuntimeError):
+    pass
 
 
-def default_auto_image_dir() -> Path:
-    return desktop_root() / "output images" / "AUTO"
-
-
-def default_auto_pdf_dir() -> Path:
-    return desktop_root() / "for printing" / "AUTO"
+def exclusive_auto(function):
+    """Coordinate WSL synthesis and example loading across MTYH processes."""
+    @wraps(function)
+    def run(*args, **kwargs):
+        with ExitStack() as stack:
+            try:
+                stack.enter_context(file_lock(app_data_dir() / "auto.lock", blocking=False))
+            except OSError as exc:
+                raise AutoBusyError("Another MTYH process is using AUTO or reading glyph coverage.") from exc
+            return function(*args, **kwargs)
+    return run
 
 
 def validate_file_component(value: str, label: str) -> str:
@@ -79,13 +86,23 @@ def prepare_sections(
     character_pairs: Iterable[tuple[str, str]],
     replacement_direction: str,
 ) -> list[str]:
+    _, sections, _ = format_auto_source(source_text, formatter_settings, character_pairs, replacement_direction)
+    return sections
+
+
+def format_auto_source(
+    source_text: str,
+    formatter_settings: FormatterSettings,
+    character_pairs: Iterable[tuple[str, str]],
+    replacement_direction: str,
+) -> tuple[str, list[str], bool]:
     mapping = build_replacement_mapping(character_pairs, replacement_direction)
     processed = apply_replacements(source_text, mapping)
-    formatted, _ = format_text(processed, formatter_settings)
+    formatted, oversized = format_text(processed, formatter_settings)
     sections = split_formatted_sections(formatted)
     if not sections:
         raise ValueError("The source text did not produce any sections.")
-    return sections
+    return formatted, sections, oversized
 
 
 def _progress_message(payload: dict[str, object]) -> str | None:
@@ -105,6 +122,58 @@ def _progress_message(payload: dict[str, object]) -> str | None:
     return None
 
 
+def _quote_wsl_path(path: str) -> str:
+    if path.startswith("~/"):
+        return '"$HOME"/' + shlex.quote(path[2:])
+    return shlex.quote(path)
+
+
+def _hst_command(distro: str, hst_dir: str, line_graph_dir: str, *args: str, display: bool) -> list[str]:
+    script = resource_path("synthesis", "hst_batch.py")
+    if not script.is_file():
+        raise FileNotFoundError(f"The AUTO synthesis adapter is missing: {script}")
+
+    python = shlex.join([
+        "python3",
+        windows_to_wsl_path(script),
+        *args,
+    ])
+    python += f" --line-graphs={_quote_wsl_path(line_graph_dir)}"
+    launch = python
+    if display:
+        launch = f"if command -v xvfb-run >/dev/null; then GDK_BACKEND=x11 xvfb-run -a {python}; else {python}; fi"
+    command = f"cd -- {_quote_wsl_path(hst_dir)} && export OMP_NUM_THREADS=8 OMP_DYNAMIC=FALSE && {launch}"
+    return ["wsl.exe", "--distribution", distro, "--", "bash", "-lc", command]
+
+
+@exclusive_auto
+def read_glyph_coverage(auto_config: dict[str, object]) -> dict:
+    command = _hst_command(
+        str(auto_config["wsl_distro"]),
+        str(auto_config["hst_dir"]),
+        str(auto_config["line_graph_dir"]),
+        "--glyphs-only",
+        display=False,
+    )
+    run = subprocess.run(
+        command,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=120,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    for line in reversed(run.stdout.splitlines()):
+        if line.startswith("MTYH_PROGRESS "):
+            report = json.loads(line.removeprefix("MTYH_PROGRESS "))
+            if report.get("stage") == "glyphs" and run.returncode == 0:
+                return report
+            if report.get("stage") == "error":
+                raise RuntimeError(str(report["message"]))
+    details = "\n".join((run.stderr or run.stdout).replace("\x00", "").splitlines()[-6:])
+    raise RuntimeError(f"Could not read HST glyphs. {details}".strip())
+
+
 def _run_synthesis(
     sections_file: Path,
     image_dir: Path,
@@ -113,29 +182,22 @@ def _run_synthesis(
     hst_dir: str,
     line_graph_dir: str,
     progress_callback: ProgressCallback,
+    *,
+    strict_characters: bool = False,
 ) -> None:
-    script = resource_path("synthesis", "hst_batch.py")
-    if not script.is_file():
-        raise FileNotFoundError(f"The AUTO synthesis adapter is missing: {script}")
-
-    command_parts = [
-        f"cd {shlex.quote(hst_dir)}",
-        "export OMP_NUM_THREADS=8 OMP_DYNAMIC=FALSE",
-        "python3",
-        shlex.quote(windows_to_wsl_path(script)),
-        "--sections-json",
-        shlex.quote(windows_to_wsl_path(sections_file)),
-        "--output-dir",
-        shlex.quote(windows_to_wsl_path(image_dir)),
-        "--prefix",
-        shlex.quote(image_prefix),
-        "--line-graphs",
-        shlex.quote(line_graph_dir),
-    ]
-    command = " && ".join(command_parts[:2]) + " && " + " ".join(command_parts[2:])
+    command = _hst_command(
+        distro,
+        hst_dir,
+        line_graph_dir,
+        f"--sections-json={windows_to_wsl_path(sections_file)}",
+        f"--output-dir={windows_to_wsl_path(image_dir)}",
+        f"--prefix={image_prefix}",
+        *(["--strict-characters"] if strict_characters else []),
+        display=True,
+    )
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     process = subprocess.Popen(
-        ["wsl.exe", "-d", distro, "--", "bash", "-lc", command],
+        command,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -145,6 +207,7 @@ def _run_synthesis(
         creationflags=creation_flags,
     )
     recent_output: list[str] = []
+    reported_error = None
     assert process.stdout is not None
     for raw_line in process.stdout:
         line = raw_line.rstrip()
@@ -154,6 +217,8 @@ def _run_synthesis(
                 payload = json.loads(line.removeprefix("MTYH_PROGRESS "))
             except json.JSONDecodeError:
                 continue
+            if payload.get("stage") == "error":
+                reported_error = payload.get("message")
             message = _progress_message(payload)
             if message:
                 progress_callback(message)
@@ -162,11 +227,19 @@ def _run_synthesis(
             del recent_output[:-12]
     return_code = process.wait()
     if return_code:
-        details = "\n".join(recent_output[-6:])
+        details = str(reported_error or "\n".join(recent_output[-6:]))
         suffix = f"\n\n{details}" if details else ""
         raise RuntimeError(f"Handwriting synthesis exited with code {return_code}.{suffix}")
 
 
+def pdf_stem(pdf_name: str) -> str:
+    name = validate_file_component(pdf_name, "final PDF name")
+    if name.casefold().endswith(".pdf"):
+        name = validate_file_component(name[:-4], "final PDF name")
+    return name
+
+
+@exclusive_auto
 def run_auto_pipeline(
     source_text: str,
     image_prefix: str,
@@ -177,23 +250,27 @@ def run_auto_pipeline(
     image_settings: ImageProcessingSettings,
     auto_config: dict[str, object] | None = None,
     progress_callback: ProgressCallback | None = None,
+    *,
+    strict_characters: bool = False,
+    overwrite_pdf: bool = True,
 ) -> AutoPipelineResult:
     progress = progress_callback or (lambda _message: None)
     if not source_text.strip():
         raise ValueError("Paste source text before running AUTO.")
     image_prefix = validate_file_component(image_prefix, "generated image prefix")
-    pdf_name = validate_file_component(pdf_name, "final PDF name")
-    if pdf_name.casefold().endswith(".pdf"):
-        pdf_name = pdf_name[:-4].rstrip()
-        pdf_name = validate_file_component(pdf_name, "final PDF name")
+    pdf_name = pdf_stem(pdf_name)
 
+    defaults = default_auto_config()
     options = auto_config or {}
-    image_dir = Path(str(options.get("image_output_dir") or default_auto_image_dir()))
-    pdf_dir = Path(str(options.get("pdf_output_dir") or default_auto_pdf_dir()))
-    distro = str(options.get("wsl_distro") or "Ubuntu")
-    hst_dir = str(options.get("hst_dir") or "/home/marton/helit/handwriting/hst")
-    line_graph_dir = str(options.get("line_graph_dir") or "/home/marton/trainingdata")
+    image_dir = Path(str(options.get("image_output_dir") or defaults["image_output_dir"]))
+    pdf_dir = Path(str(options.get("pdf_output_dir") or defaults["pdf_output_dir"]))
+    distro = str(options.get("wsl_distro") or defaults["wsl_distro"])
+    hst_dir = str(options.get("hst_dir") or defaults["hst_dir"])
+    line_graph_dir = str(options.get("line_graph_dir") or defaults["line_graph_dir"])
     terminate_wsl = bool(options.get("terminate_wsl", True))
+    pdf_path = pdf_dir / f"{pdf_name}.pdf"
+    if not overwrite_pdf and pdf_path.exists():
+        raise FileExistsError(f"The PDF already exists: {pdf_path}. Choose a different PDF name.")
 
     sections = prepare_sections(
         source_text,
@@ -214,8 +291,8 @@ def run_auto_pipeline(
     work_dir = app_data_dir() / "work" / uuid.uuid4().hex
     work_dir.mkdir(parents=True, exist_ok=False)
     sections_file = work_dir / "sections.json"
-    sections_file.write_text(json.dumps(sections, ensure_ascii=False), encoding="utf-8")
     try:
+        sections_file.write_text(json.dumps(sections, ensure_ascii=False), encoding="utf-8")
         progress(f"Formatted source text into {len(sections)} page(s).")
         try:
             _run_synthesis(
@@ -226,6 +303,7 @@ def run_auto_pipeline(
                 hst_dir,
                 line_graph_dir,
                 progress,
+                **({"strict_characters": True} if strict_characters else {}),
             )
         finally:
             if terminate_wsl:
@@ -240,7 +318,6 @@ def run_auto_pipeline(
         missing = [path for path in image_paths if not path.is_file()]
         if missing:
             raise RuntimeError(f"Synthesis did not create {missing[0].name}.")
-        pdf_path = pdf_dir / f"{pdf_name}.pdf"
         progress(f"Creating {pdf_path.name} from {len(image_paths)} image(s)…")
         process_stitch_export(
             image_paths,
@@ -248,6 +325,7 @@ def run_auto_pipeline(
             ExportMode.PDF,
             image_settings,
             delete_originals=True,
+            overwrite=overwrite_pdf,
         )
         progress(f"Complete: {pdf_path.name}")
         return AutoPipelineResult(pdf_path=pdf_path, page_count=len(image_paths))
